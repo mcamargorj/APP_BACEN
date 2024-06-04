@@ -98,7 +98,7 @@ else:
     st.stop()
 
 # Header e descrição
-st.header('Reclamações: Empresa x Quantidade de Reclamações')
+st.header('BACEN: Empresa x Quantidade de Reclamações')
 fAdms = st.selectbox("Selecione a Empresa:", options=df_csv[coluna_empresa].unique())
 
 dadosUsuario = df_csv[df_csv[coluna_empresa] == fAdms]
