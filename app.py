@@ -42,7 +42,7 @@ def cantos_arredondados(image, radius):
 # Sidebar para filtro
 with st.sidebar:
     st.subheader('BASES DE RECLAMAÇÕES DO BACEN')
-    logo = Image.open('logo.png').convert("RGBA")  # Convertendo para RGBA para manipulação de transparência, se necessário
+    logo = Image.open('logo.png').convert("RGBA")  
     rounded_logo = cantos_arredondados(logo, 20)
     st.image(rounded_logo, use_column_width=True)
     
@@ -129,8 +129,9 @@ st.altair_chart(grafCombEstado)
 
 
 
+
 # Exibir as primeiras linhas do DataFrame
-st.write("Ranking de Reclamações")
+st.markdown('<h2 style="font-size: 26px;">Ranking de Reclamações</h2>', unsafe_allow_html=True)
 
 # Remover pontos (separadores de milhar) e substituir vírgulas por pontos (separadores decimais)
 df_csv['Índice'] = df_csv['Índice'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
@@ -148,25 +149,30 @@ df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].map(lambda x: f"{x:.
 
 # Renomear as colunas
 df_ranking_top_10 = df_ranking_top_10.rename(columns={
-    'Instituição financeira': 'Instituição financeira',
-    'Índice': 'Índice',
+    'Instituição financeira': 'Instituição Financeira',
+    'Administradora de consórcio': 'Administradora de Consórcio',
+    'Índice': 'Índice <span style="cursor: pointer;" title="Número de reclamações dividido pelo número de consorciados ativos e multiplicado por 1.000.000">ℹ️</span>', 
     'Quantidade de reclamações reguladas procedentes': 'Reguladas Procedentes',
     'Quantidade de reclamações reguladas - outras': 'Reguladas Outras',
     'Quantidade de reclamações não reguladas': 'Não Reguladas',
     'Quantidade total de reclamações': 'Total'
 })
 
-# Aplicar estilos à tabela
-styled_df = df_ranking_top_10.style.set_table_styles([
-    {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold')]},
-    {'selector': 'tbody td', 'props': [('font-size', '10pt')]},
+#Estilo da tabela
 
-]).set_properties(**{'text-align': 'center', 'max-width': '100px'})
+styled_df = df_ranking_top_10.style.set_table_styles([
+    {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center')]},
+    {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
+    {'selector': 'td.col0', 'props': [('max-width', '1000px'), ('white-space', 'normal'), ('text-align', 'left')]},  # Alinhamento à esquerda
+    {'selector': 'td.col1, td.col2, td.col3, td.col4, td.col5', 'props': [('max-width', 'none'), ('text-align', 'center')]},  # Alinhamento centralizado para as demais colunas
+]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
 
 
 # Exibir a tabela estilizada
-st.table(styled_df)
+st.markdown(styled_df.to_html(escape=False), unsafe_allow_html=True)
 
+# Adicionar uma quebra de linha
+st.markdown("")  
 
 # Adicionar um botão de download para o CSV
 st.download_button(
