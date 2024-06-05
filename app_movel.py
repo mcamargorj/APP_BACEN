@@ -7,7 +7,7 @@ import altair as alt
 from PIL import Image, ImageDraw, ImageOps
 
 # Configurar layout da página
-st.set_page_config(layout="centered")
+st.set_page_config(layout="none")
 
 # Função para carregar os dados do JSON
 def load_data():
