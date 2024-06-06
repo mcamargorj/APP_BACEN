@@ -144,10 +144,16 @@ df_ranking_top_10 = df_ranking.head(10).reset_index(drop=True)
 # Adicionar 1 ao índice
 #df_ranking_top_10.index += 1 
 # Criar um novo índice com o formato "1º", "2º", etc.
-df_ranking_top_10.index = [f"{i+1}º" for i in df_ranking_top_10.index]
+#df_ranking_top_10.index = [f"{i+1}º" for i in df_ranking_top_10.index]
 #df_ranking_top_10.index.name = 'Rank'
+# Criar a coluna "Rank" com o formato "1º", "2º", etc.
+df_ranking_top_10['Rank'] = [f"{i+1}º" for i in df_ranking_top_10.index]
+# Reordenar as colunas para que "Rank" seja a primeira coluna
+cols = ['Rank'] + [col for col in df_ranking_top_10.columns if col != 'Rank']
+df_ranking_top_10 = df_ranking_top_10[cols]
 # Formatar a coluna 'Índice' para exibir dois números após a vírgula
 df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].map(lambda x: f"{x:.2f}")
+df_ranking_top_10 = df_ranking_top_10.to_string(index=False)
 
 
 # Renomear as colunas
