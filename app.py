@@ -191,6 +191,7 @@ df_ranking_top_10 = df_ranking_top_10.rename(columns={
 #styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px solid #D3D3D3; box-shadow: 5px 5px 5px #888888;" class="styled-table"')
 
 
+
 # Definindo o estilo da tabela
 styled_df = df_ranking_top_10.style.set_table_styles([
     {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center'), ('background-color', '#404040'), ('color', 'white')]},  # Cor cinza escuro no cabeçalho
@@ -206,23 +207,17 @@ styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px so
 
 # CSS personalizado para o efeito de hover
 css = """
+<style>
 .styled-table tbody tr:hover {
-    background-color: #F0F0F0;
+    background-color: #F0F0F0 !important;
 }
+</style>
 """
 
-styled_df.set_table_styles([{
-    'selector': 'table',
-    'props': [('border-collapse', 'collapse'), ('border', '2px solid #D3D3D3'), ('box-shadow', '5px 5px 5px #888888;')],
-}, {
-    'selector': 'tbody tr',
-    'props': [('background-color', 'white')],
-}, {
-    'selector': 'tbody tr:nth-child(even)',
-    'props': [('background-color', '#F2F2F2')],
-}])
+# Adicionando o CSS ao HTML da tabela
+styled_df = styled_df.set_caption(css)
 
-styled_df.set_caption(css)
+
 
 
 
