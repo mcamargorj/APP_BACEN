@@ -153,7 +153,7 @@ cols = ['Rank'] + [col for col in df_ranking_top_10.columns if col != 'Rank']
 df_ranking_top_10 = df_ranking_top_10[cols]
 # Formatar a coluna 'Índice' para exibir dois números após a vírgula
 df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].map(lambda x: f"{x:.2f}")
-df_ranking_top_10 = df_ranking_top_10.to_string(index=False)
+
 
 
 # Renomear as colunas
@@ -166,7 +166,7 @@ df_ranking_top_10 = df_ranking_top_10.rename(columns={
     'Quantidade de reclamações não reguladas': 'Não Reguladas',
     'Quantidade total de reclamações': 'Total'
 })
-
+df_ranking_top_10 = df_ranking_top_10.to_string(index=False)
 #Estilo da tabela
 
 styled_df = df_ranking_top_10.style.set_table_styles([
