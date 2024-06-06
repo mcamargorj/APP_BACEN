@@ -186,11 +186,8 @@ styled_df = df_ranking_top_10.style.set_table_styles([
     {'selector': 'tbody tr:nth-child(even) td:not(.col0)', 'props': [('background-color', '#F2F2F2')]},  # Cor cinza claro nas células das demais colunas
     {'selector': 'tbody tr:nth-child(odd) td:not(.col0)', 'props': [('background-color', 'white')]},  # Cor branca intercalada nas células das demais colunas
     {'selector': 'td.col1', 'props': [('max-width', '1000px'), ('white-space', 'normal'), ('text-align', 'left')]},  # Propriedades da coluna 1
-    {'selector': 'td', 'props': [('border', '1px solid #D3D3D3')]}  # Adicionando bordas à tabela
+    {'selector': 'table', 'props': [('border-collapse', 'collapse'), ('border', '2px solid #D3D3D3')]}  # Borda moderna
 ]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
-# Exibir a tabela estilizada sem o índice
-st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
-
 # Exibir a tabela estilizada
 #st.markdown(styled_df.to_html(escape=False), unsafe_allow_html=True)
 
