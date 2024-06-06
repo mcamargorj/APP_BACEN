@@ -181,13 +181,15 @@ df_ranking_top_10 = df_ranking_top_10.rename(columns={
 styled_df = df_ranking_top_10.style.set_table_styles([
     {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center'), ('background-color', '#404040'), ('color', 'white')]},  # Cor cinza escuro no cabeçalho
     {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
-    {'selector': 'td.col0, td.col1', 'props': [('max-width', '1000px'), ('white-space', 'normal'), ('text-align', 'left'), ('background-color', '#F2F2F2')]},  # Cor cinza claro na coluna 0 e 1
-    {'selector': 'td.col0', 'props': [('font-weight', 'bold')]},  # Mantendo a coluna de rank em negrito
-    {'selector': 'tbody tr:nth-child(even) td:not(.col0)', 'props': [('background-color', '#F2F2F2')]},  # Cor cinza claro nas células das demais colunas
-    {'selector': 'tbody tr:nth-child(odd) td:not(.col0)', 'props': [('background-color', 'white')]},  # Cor branca intercalada nas células das demais colunas
     {'selector': 'td.col1', 'props': [('max-width', '1000px'), ('white-space', 'normal'), ('text-align', 'left')]},  # Propriedades da coluna 1
-    {'selector': 'table', 'props': [('border-collapse', 'collapse'), ('border', '2px solid #D3D3D3')]}  # Borda moderna
+    {'selector': 'td.col0', 'props': [('font-weight', 'bold'), ('text-align', 'center')]},  # Alinhamento centralizado para a coluna de rank
+    {'selector': 'tbody td.col0:nth-child(even)', 'props': [('background-color', '#F2F2F2')]},  # Cor cinza claro nas células pares da coluna de rank
+    {'selector': 'tbody td.col0:nth-child(odd)', 'props': [('background-color', 'white')]},  # Cor branca nas células ímpares da coluna de rank
+    {'selector': 'tbody td:not(.col0)', 'props': [('background-color', '#F2F2F2')]},  # Cor cinza claro nas células das demais colunas
 ]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
+
+# Adicionando borda à tabela
+styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px solid #D3D3D3;"')
 
 # Exibir a tabela estilizada sem o índice
 st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
