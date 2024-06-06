@@ -140,7 +140,7 @@ df_csv['Índice'] = pd.to_numeric(df_csv['Índice'], errors='coerce')
 # Ordenar a coluna do maior para o menor
 df_ranking = df_csv.sort_values(by='Índice', ascending=False)
 # Selecionar apenas as 10 primeiras linhas, resetar o índice e adicionar 1 ao índice
-#df_ranking_top_10 = df_ranking.head(10).reset_index(drop=True)
+df_ranking_top_10 = df_ranking.head(10).reset_index(drop=True)
 # Adicionar 1 ao índice
 #df_ranking_top_10.index += 1 
 # Criar um novo índice com o formato "1º", "2º", etc.
