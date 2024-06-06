@@ -178,10 +178,11 @@ df_ranking_top_10 = df_ranking_top_10.rename(columns={
 
 # Definindo o estilo da tabela
 styled_df = df_ranking_top_10.style.set_table_styles([
-    {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center')]},
+    {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center'), ('background-color', '#404040'), ('color', 'white')]},  # Cor cinza escuro no cabeçalho
     {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
-    {'selector': 'td.col0', 'props': [('max-width', 'none'), ('white-space', 'pre-wrap'), ('text-align', 'center'), ('font-weight', 'bold'), ('background-color', '#404040'), ('color', 'white')]},  # Cor cinza escuro na primeira coluna
-    {'selector': 'tbody tr:nth-child(even) td', 'props': [('background-color', '#F2F2F2')]},  # Cor cinza claro nas demais linhas
+    {'selector': 'td.col0', 'props': [('max-width', 'none'), ('white-space', 'pre-wrap'), ('text-align', 'center'), ('font-weight', 'bold')]},  # Mantendo a coluna de rank sem cores
+    {'selector': 'tbody tr:nth-child(even) td:not(.col0)', 'props': [('background-color', '#F2F2F2')]},  # Cor cinza claro nas células das demais colunas
+    {'selector': 'tbody tr:nth-child(odd) td:not(.col0)', 'props': [('background-color', 'white')]},  # Cor branca intercalada nas células das demais colunas
     {'selector': 'td.col1, td.col2, td.col3, td.col4, td.col5, td.col6', 'props': [('max-width', 'none'), ('text-align', 'center')]},  # Alinhamento centralizado para as demais colunas
 ]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
 
