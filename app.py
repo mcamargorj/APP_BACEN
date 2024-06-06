@@ -119,7 +119,8 @@ dadosUsuario['Tipo de Reclamação'] = dadosUsuario['Tipo de Reclamação'].repl
 grafCombEstado = alt.Chart(dadosUsuario).mark_bar().encode(
     x=alt.X('Tipo de Reclamação:N', title='Tipo de Reclamação', axis=alt.Axis(labelAngle=-45)),
     y=alt.Y('Quantidade:Q', title='Quantidade'),
-    color='Tipo de Reclamação:N'
+    #color='Tipo de Reclamação:N'
+    color=alt.Color('Tipo de Reclamação:N', scale=alt.Scale(domain=['Primeira', 'Segunda', 'Terceira'], range=['#FF5733', '#33FF57', '#337AFF']))
 ).properties(
     height=400,
     width=800
