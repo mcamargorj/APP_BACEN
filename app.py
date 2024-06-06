@@ -188,6 +188,10 @@ styled_df = df_ranking_top_10.style.set_table_styles([
     {'selector': 'td.col1', 'props': [('max-width', '1000px'), ('white-space', 'normal'), ('text-align', 'left')]},  # Propriedades da coluna 1
     {'selector': 'table', 'props': [('border-collapse', 'collapse'), ('border', '2px solid #D3D3D3')]}  # Borda moderna
 ]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
+
+# Exibir a tabela estilizada sem o índice
+st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
+
 # Exibir a tabela estilizada
 #st.markdown(styled_df.to_html(escape=False), unsafe_allow_html=True)
 
