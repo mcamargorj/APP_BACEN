@@ -116,17 +116,38 @@ dadosUsuario['Tipo de Reclamação'] = dadosUsuario['Tipo de Reclamação'].repl
 })
 
 # Construir gráfico com Altair
+import altair as alt
+import streamlit as st
+import pandas as pd
+
+# Suponha que `dadosUsuario` seja o DataFrame contendo seus dados
+
 grafCombEstado = alt.Chart(dadosUsuario).mark_bar().encode(
     x=alt.X('Tipo de Reclamação:N', title='Tipo de Reclamação', axis=alt.Axis(labelAngle=-45)),
     y=alt.Y('Quantidade:Q', title='Quantidade'),
-    #color='Tipo de Reclamação:N'
-    color=alt.Color('Tipo de Reclamação:N', scale=alt.Scale(range=['#00aca8', '#1d2262', '#d4096a']))
+    color=alt.Color('Tipo de Reclamação:N', 
+                    scale=alt.Scale(range=['#00aca8', '#1d2262', '#d4096a'], 
+                                    legend=alt.Legend(title="Tipos de Reclamação")))
 ).properties(
     height=400,
     width=800
 )
 
+# Adicionando os valores numéricos nas barras
+text = grafCombEstado.mark_text(
+    align='center',
+    baseline='middle',
+    dx=0,  # Nudge the text to the right so it doesn't appear on top of the bar
+    dy=-5  # Nudge the text upward for better alignment
+).encode(
+    text='Quantidade:Q'  # Use the 'Quantidade' column for the text
+)
+
+grafCombEstado = (grafCombEstado + text)
+
 st.altair_chart(grafCombEstado)
+
+
 
 
 
