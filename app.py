@@ -188,8 +188,9 @@ styled_df = df_ranking_top_10.style.set_table_styles([
     {'selector': 'tbody td:not(.col0)', 'props': [('background-color', '#F2F2F2')]},  # Cor cinza claro nas células das demais colunas
 ]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
 
-# Adicionando borda à tabela
-styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px solid #D3D3D3;"')
+# Adicionando borda à tabela com efeito de sombra
+styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px solid #D3D3D3; box-shadow: 5px 5px 5px #888888;"')
+
 
 # Exibir a tabela estilizada sem o índice
 st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
