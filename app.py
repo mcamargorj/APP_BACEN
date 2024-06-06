@@ -98,7 +98,7 @@ else:
     st.stop()
 
 # Header e descrição
-st.header('BACEN: Empresa x Quantidade de Reclamações')
+st.header('BACEN: Empresa x Quantidade de Reclamações por Tipo')
 fAdms = st.selectbox("Selecione a Empresa:", options=df_csv[coluna_empresa].unique())
 
 dadosUsuario = df_csv[df_csv[coluna_empresa] == fAdms]
@@ -130,31 +130,27 @@ st.altair_chart(grafCombEstado)
 
 
 
-# Exibir as primeiras linhas do DataFrame
+# Início Tabela
+
 st.markdown('<h2 style="font-size: 26px;">Ranking de Reclamações</h2>', unsafe_allow_html=True)
 
-# Remover pontos (separadores de milhar) e substituir vírgulas por pontos (separadores decimais)
+# Tratamento dos dados da coluna índice e rank
+
+# Remover pontos (separadores de milhar) e substituir vírgulas por pontos (separadores decimais).
 df_csv['Índice'] = df_csv['Índice'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-# Converter a coluna para numérico
+# Converter a coluna para numérico.
 df_csv['Índice'] = pd.to_numeric(df_csv['Índice'], errors='coerce')
-# Ordenar a coluna do maior para o menor
+# Ordenar a coluna do maior para o menor.
 df_ranking = df_csv.sort_values(by='Índice', ascending=False)
-# Selecionar apenas as 10 primeiras linhas, resetar o índice e adicionar 1 ao índice
+# Selecionar apenas as 10 primeiras linhas, resetar o índice.
 df_ranking_top_10 = df_ranking.head(10).reset_index(drop=True)
-# Adicionar 1 ao índice
-#df_ranking_top_10.index += 1 
-# Criar um novo índice com o formato "1º", "2º", etc.
-#df_ranking_top_10.index = [f"{i+1}º" for i in df_ranking_top_10.index]
-#df_ranking_top_10.index.name = 'Rank'
 # Criar a coluna "Rank" com o formato "1º", "2º", etc.
 df_ranking_top_10['Rank'] = [f"{i+1}º" for i in df_ranking_top_10.index]
-# Reordenar as colunas para que "Rank" seja a primeira coluna
+# Reordenar as colunas para que "Rank" seja a primeira coluna.
 cols = ['Rank'] + [col for col in df_ranking_top_10.columns if col != 'Rank']
 df_ranking_top_10 = df_ranking_top_10[cols]
-# Formatar a coluna 'Índice' para exibir dois números após a vírgula
+# Formatar a coluna 'Índice' para exibir dois números após a vírgula.
 df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].map(lambda x: f"{x:.2f}")
-
-
 
 # Renomear as colunas
 df_ranking_top_10 = df_ranking_top_10.rename(columns={
@@ -167,7 +163,7 @@ df_ranking_top_10 = df_ranking_top_10.rename(columns={
     'Quantidade total de reclamações': 'Total'
 })
 
-#Estilo da tabela
+#Estilo da tabela modelo1
 #styled_df = df_ranking_top_10.style.set_table_styles([
 #    {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center')]},
 #    {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
@@ -177,7 +173,7 @@ df_ranking_top_10 = df_ranking_top_10.rename(columns={
 #]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
 
 
-# Definindo o estilo da tabela
+# Definindo o estilo da tabela modelo2
 #styled_df = df_ranking_top_10.style.set_table_styles([
 #    {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center'), ('background-color', '#404040'), ('color', 'white')]},  # Cor cinza escuro no cabeçalho
 #    {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
@@ -190,9 +186,7 @@ df_ranking_top_10 = df_ranking_top_10.rename(columns={
 # Adicionando efeito de hover nas linhas da tabela
 #styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px solid #D3D3D3; box-shadow: 5px 5px 5px #888888;" class="styled-table"')
 
-
-
-# Definindo o estilo da tabela
+# Definindo o estilo da tabela modelo3
 styled_df = df_ranking_top_10.style.set_table_styles([
     {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center'), ('background-color', '#404040'), ('color', 'white')]},  # Cor cinza escuro no cabeçalho
     {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
@@ -213,22 +207,11 @@ css = """
 }
 </style>
 """
-
 # Adicionando o CSS ao HTML da tabela
 styled_df = styled_df.set_caption(css)
 
-
-
-
-
-
-
-
 # Exibir a tabela estilizada sem o índice
 st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
-
-# Exibir a tabela estilizada
-#st.markdown(styled_df.to_html(escape=False), unsafe_allow_html=True)
 
 # Adicionar uma quebra de linha
 st.markdown("")  
