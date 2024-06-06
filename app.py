@@ -171,7 +171,7 @@ df_ranking_top_10 = df_ranking_top_10.rename(columns={
 styled_df = df_ranking_top_10.style.set_table_styles([
     {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center')]},
     {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
-    {'selector': 'td.col0', 'props': [('max-width', 'none'), ('white-space', 'pre-wrap'), ('text-align', 'center', 'bold')]},
+    {'selector': 'td.col0', 'props': [('max-width', 'none'), ('white-space', 'pre-wrap'), ('text-align', 'center'),  ('font-weight', 'bold')]},
     {'selector': 'td.col1', 'props': [('max-width', '1000px'), ('white-space', 'normal'), ('text-align', 'left')]},  # Alinhamento à esquerda
     {'selector': 'td.col2, td.col3, td.col4, td.col5, td.col6', 'props': [('max-width', 'none'), ('text-align', 'center')]},  # Alinhamento centralizado para as demais colunas
 ]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
