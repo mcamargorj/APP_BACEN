@@ -166,7 +166,6 @@ df_ranking_top_10 = df_ranking_top_10.rename(columns={
     'Quantidade de reclamações não reguladas': 'Não Reguladas',
     'Quantidade total de reclamações': 'Total'
 })
-df_ranking_top_10 = df_ranking_top_10.to_string(index=False)
 #Estilo da tabela
 
 styled_df = df_ranking_top_10.style.set_table_styles([
@@ -176,9 +175,11 @@ styled_df = df_ranking_top_10.style.set_table_styles([
     {'selector': 'td.col1, td.col2, td.col3, td.col4, td.col5', 'props': [('max-width', 'none'), ('text-align', 'center')]},  # Alinhamento centralizado para as demais colunas
 ]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
 
+# Exibir a tabela estilizada sem o índice
+st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
 
 # Exibir a tabela estilizada
-st.markdown(styled_df.to_html(escape=False), unsafe_allow_html=True)
+#st.markdown(styled_df.to_html(escape=False), unsafe_allow_html=True)
 
 # Adicionar uma quebra de linha
 st.markdown("")  
