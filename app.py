@@ -178,6 +178,20 @@ df_ranking_top_10 = df_ranking_top_10.rename(columns={
 
 
 # Definindo o estilo da tabela
+#styled_df = df_ranking_top_10.style.set_table_styles([
+#    {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center'), ('background-color', '#404040'), ('color', 'white')]},  # Cor cinza escuro no cabeçalho
+#    {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
+#    {'selector': 'td.col1', 'props': [('max-width', '1000px'), ('white-space', 'normal'), ('text-align', 'left')]},  # Propriedades da coluna 1
+#    {'selector': 'td.col0', 'props': [('font-weight', 'bold'), ('text-align', 'center')]},  # Alinhamento centralizado para a coluna de rank
+#    {'selector': 'tbody tr:nth-child(even)', 'props': [('background-color', '#F2F2F2')]},  # Cor cinza claro nas linhas pares
+#    {'selector': 'tbody tr:nth-child(odd)', 'props': [('background-color', 'white')]},  # Cor branca nas linhas ímpares
+#]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
+
+# Adicionando efeito de hover nas linhas da tabela
+#styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px solid #D3D3D3; box-shadow: 5px 5px 5px #888888;" class="styled-table"')
+
+
+# Definindo o estilo da tabela
 styled_df = df_ranking_top_10.style.set_table_styles([
     {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center'), ('background-color', '#404040'), ('color', 'white')]},  # Cor cinza escuro no cabeçalho
     {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
@@ -187,8 +201,30 @@ styled_df = df_ranking_top_10.style.set_table_styles([
     {'selector': 'tbody tr:nth-child(odd)', 'props': [('background-color', 'white')]},  # Cor branca nas linhas ímpares
 ]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
 
-# Adicionando efeito de hover nas linhas da tabela
+# Adicionando efeito de hover nas linhas da tabela com CSS
 styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px solid #D3D3D3; box-shadow: 5px 5px 5px #888888;" class="styled-table"')
+
+# CSS personalizado para o efeito de hover
+css = """
+.styled-table tbody tr:hover {
+    background-color: #F0F0F0;
+}
+"""
+
+styled_df.set_table_styles([{
+    'selector': 'table',
+    'props': [('border-collapse', 'collapse'), ('border', '2px solid #D3D3D3'), ('box-shadow', '5px 5px 5px #888888;')],
+}, {
+    'selector': 'tbody tr',
+    'props': [('background-color', 'white')],
+}, {
+    'selector': 'tbody tr:nth-child(even)',
+    'props': [('background-color', '#F2F2F2')],
+}])
+
+styled_df.set_caption(css)
+
+
 
 
 
