@@ -204,7 +204,7 @@ styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px so
 css = """
 <style>
 .styled-table tbody tr:hover {
-    background-color: #00BFFF !important;
+    background-color: #d8f5ff !important;
 }
 </style>
 """
