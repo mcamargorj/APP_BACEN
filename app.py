@@ -7,7 +7,12 @@ import altair as alt
 from PIL import Image, ImageDraw, ImageOps
 
 # Configurar layout da página
-st.set_page_config(layout="wide")
+#st.set_page_config(layout="wide")
+st.set_page_config(
+    page_title="Dashboard BACEN",
+    page_icon="🏂",
+    layout="wide",
+    initial_sidebar_state="expanded")
 
 # Função para carregar os dados do JSON
 def load_data():
