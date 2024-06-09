@@ -214,7 +214,7 @@ with col[1]:
     # Exibir a tabela estilizada sem o índice
     #st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
 
-    st.write(styled_df, unsafe_allow_html=True)
+    st.write(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
 
 
     # Adicionar uma quebra de linha
