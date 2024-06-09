@@ -147,11 +147,6 @@ grafCombEstado = (grafCombEstado + text)
 
 st.altair_chart(grafCombEstado)
 
-
-
-
-
-
 # Início Tabela
 
 st.markdown('<h2 style="font-size: 26px;">Ranking de Reclamações</h2>', unsafe_allow_html=True)
@@ -185,28 +180,6 @@ df_ranking_top_10 = df_ranking_top_10.rename(columns={
     'Quantidade total de reclamações': 'Total'
 })
 
-#Estilo da tabela modelo1
-#styled_df = df_ranking_top_10.style.set_table_styles([
-#    {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center')]},
-#    {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
-#    {'selector': 'td.col0', 'props': [('max-width', 'none'), ('white-space', 'pre-wrap'), ('text-align', 'center'),  ('font-weight', 'bold')]},
-#    {'selector': 'td.col1', 'props': [('max-width', '1000px'), ('white-space', 'normal'), ('text-align', 'left')]},  # Alinhamento à esquerda
-#    {'selector': 'td.col2, td.col3, td.col4, td.col5, td.col6', 'props': [('max-width', 'none'), ('text-align', 'center')]},  # Alinhamento centralizado para as demais colunas
-#]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
-
-
-# Definindo o estilo da tabela modelo2
-#styled_df = df_ranking_top_10.style.set_table_styles([
-#    {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center'), ('background-color', '#404040'), ('color', 'white')]},  # Cor cinza escuro no cabeçalho
-#    {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
-#    {'selector': 'td.col1', 'props': [('max-width', '1000px'), ('white-space', 'normal'), ('text-align', 'left')]},  # Propriedades da coluna 1
-#    {'selector': 'td.col0', 'props': [('font-weight', 'bold'), ('text-align', 'center')]},  # Alinhamento centralizado para a coluna de rank
-#    {'selector': 'tbody tr:nth-child(even)', 'props': [('background-color', '#F2F2F2')]},  # Cor cinza claro nas linhas pares
-#    {'selector': 'tbody tr:nth-child(odd)', 'props': [('background-color', 'white')]},  # Cor branca nas linhas ímpares
-#]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
-
-# Adicionando efeito de hover nas linhas da tabela
-#styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px solid #D3D3D3; box-shadow: 5px 5px 5px #888888;" class="styled-table"')
 
 # Definindo o estilo da tabela modelo3
 styled_df = df_ranking_top_10.style.set_table_styles([
