@@ -120,10 +120,6 @@ dadosUsuario['Tipo de Reclamação'] = dadosUsuario['Tipo de Reclamação'].repl
     'Quantidade de reclamações não reguladas': 'Não Reguladas'
 })
 
-# Construir gráfico com Altair
-import altair as alt
-import streamlit as st
-import pandas as pd
 
 # Suponha que `dadosUsuario` seja o DataFrame contendo seus dados
 
