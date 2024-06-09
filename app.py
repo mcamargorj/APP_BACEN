@@ -103,7 +103,7 @@ else:
     st.stop()
 
 # Header e descrição
-col = st.columns((0.1, 4.5, 0.1), gap='medium')
+col = st.columns((7.0, 0.1), gap='medium')
 with col[1]:
     st.header('BACEN: Empresa x Quantidade de Reclamações por Tipo')
     fAdms = st.selectbox("Selecione a Empresa:", options=df_csv[coluna_empresa].unique())
