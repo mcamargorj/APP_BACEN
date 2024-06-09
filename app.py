@@ -212,7 +212,10 @@ with col[1]:
     styled_df = styled_df.set_caption(css)
 
     # Exibir a tabela estilizada sem o índice
-    st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
+    #st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
+
+    st.write(styled_df, unsafe_allow_html=True)
+
 
     # Adicionar uma quebra de linha
     st.markdown("")  
