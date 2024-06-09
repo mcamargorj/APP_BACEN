@@ -147,7 +147,11 @@ with col[1]:
 
     grafCombEstado = (grafCombEstado + text)
 
-    st.altair_chart(grafCombEstado)
+    #st.altair_chart(grafCombEstado)
+
+
+    st.altair_chart(grafCombEstado, use_container_width=True)
+
 
     # Início Tabela
 
