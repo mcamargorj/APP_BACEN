@@ -7,12 +7,12 @@ import altair as alt
 from PIL import Image, ImageDraw, ImageOps
 
 # Configurar layout da página
-#st.set_page_config(layout="wide")
 st.set_page_config(
     page_title="Dashboard BACEN",
     page_icon="🏂",
     layout="wide",
-    initial_sidebar_state="expanded")
+    initial_sidebar_state="expanded"
+)
 
 # Função para carregar os dados do JSON
 def load_data():
@@ -44,13 +44,14 @@ def cantos_arredondados(image, radius):
     result.putalpha(mask)
 
     return result
+
 # Sidebar para filtro
 with st.sidebar:
     st.subheader('BASES DE RECLAMAÇÕES DO BACEN')
-    logo = Image.open('logo.png').convert("RGBA")  
+    logo = Image.open('logo.png').convert("RGBA")
     rounded_logo = cantos_arredondados(logo, 20)
     st.image(rounded_logo, use_column_width=True)
-    
+
     # Carregar os dados
     df = load_data()
 
@@ -58,7 +59,7 @@ with st.sidebar:
     tipos_unicos = df['tipo'].unique().tolist()
 
     # Criando widgets dropdown para seleção
-    tipo_dropdown = st.selectbox('Selecione o tipo:', options=tipos_unicos, index=1)  # Define 'Consorcio' como a opção padrão
+    tipo_dropdown = st.selectbox('Selecione o tipo:', options=tipos_unicos, index=1)
     ano_dropdown = st.selectbox('Selecione o ano:', options=df[df['tipo'] == tipo_dropdown]['ano'].unique().tolist(), index=9)
     periodicidade_dropdown = st.selectbox('Selecione a periodicidade:', options=df[(df['tipo'] == tipo_dropdown) & (df['ano'] == ano_dropdown)]['periodicidade'].unique().tolist())
     periodo_dropdown = st.selectbox('Selecione o período:', options=df[(df['tipo'] == tipo_dropdown) & (df['ano'] == ano_dropdown) & (df['periodicidade'] == periodicidade_dropdown)]['periodo'].unique().tolist())
@@ -122,9 +123,8 @@ with col[0]:
         'Quantidade de reclamações não reguladas': 'Não Reguladas'
     })
 
-
-    # Suponha que `dadosUsuario` seja o DataFrame contendo seus dados
-
+    # Gráfico interativo de barras com Altair
+    
     grafCombEstado = alt.Chart(dadosUsuario).mark_bar().encode(
         x=alt.X('Tipo de Reclamação:N', title='Tipo de Reclamação', axis=alt.Axis(labelAngle=-45)),
         y=alt.Y('Quantidade:Q', title='Quantidade'),
@@ -150,29 +150,18 @@ with col[0]:
     st.altair_chart(grafCombEstado)
 
 
-    #st.altair_chart(grafCombEstado, use_container_width=True)
 
-
-    # Início Tabela
-
+    # Tabela
     st.markdown('<h2 style="font-size: 26px;">Ranking de Reclamações</h2>', unsafe_allow_html=True)
 
     # Tratamento dos dados da coluna índice e rank
-
-    # Remover pontos (separadores de milhar) e substituir vírgulas por pontos (separadores decimais).
     df_csv['Índice'] = df_csv['Índice'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-    # Converter a coluna para numérico.
     df_csv['Índice'] = pd.to_numeric(df_csv['Índice'], errors='coerce')
-    # Ordenar a coluna do maior para o menor.
     df_ranking = df_csv.sort_values(by='Índice', ascending=False)
-    # Selecionar apenas as 10 primeiras linhas, resetar o índice.
     df_ranking_top_10 = df_ranking.head(10).reset_index(drop=True)
-    # Criar a coluna "Rank" com o formato "1º", "2º", etc.
     df_ranking_top_10['Rank'] = [f"{i+1}º" for i in df_ranking_top_10.index]
-    # Reordenar as colunas para que "Rank" seja a primeira coluna.
     cols = ['Rank'] + [col for col in df_ranking_top_10.columns if col != 'Rank']
     df_ranking_top_10 = df_ranking_top_10[cols]
-    # Formatar a coluna 'Índice' para exibir dois números após a vírgula.
     df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].map(lambda x: f"{x:.2f}")
 
     # Renomear as colunas
@@ -186,40 +175,31 @@ with col[0]:
         'Quantidade total de reclamações': 'Total'
     })
 
-
-    # Definindo o estilo da tabela modelo3
+    # Definindo o estilo da tabela
     styled_df = df_ranking_top_10.style.set_table_styles([
-        {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center'), ('background-color', '#404040'), ('color', 'white')]},  # Cor cinza escuro no cabeçalho
+        {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center'), ('background-color', '#2E4053'), ('color', 'white')]},
         {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
-        {'selector': 'td.col1', 'props': [('max-width', '1000px'), ('white-space', 'normal'), ('text-align', 'left')]},  # Propriedades da coluna 1
-        {'selector': 'td.col0', 'props': [('font-weight', 'bold'), ('text-align', 'center')]},  # Alinhamento centralizado para a coluna de rank
-        {'selector': 'tbody tr:nth-child(even)', 'props': [('background-color', '#F2F2F2')]},  # Cor cinza claro nas linhas pares
-        {'selector': 'tbody tr:nth-child(odd)', 'props': [('background-color', 'white')]},  # Cor branca nas linhas ímpares
+        {'selector': 'td.col1', 'props': [('max-width', '1000px'), ('white-space', 'normal'), ('text-align', 'left')]},
+        {'selector': 'td.col0', 'props': [('font-weight', 'bold'), ('text-align', 'center')]},
+        {'selector': 'tbody tr:nth-child(even)', 'props': [('background-color', '#F7F9F9')]},
+        {'selector': 'tbody tr:nth-child(odd)', 'props': [('background-color', 'white')]}
     ]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
 
     # Adicionando efeito de hover nas linhas da tabela com CSS
     styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px solid #D3D3D3; box-shadow: 5px 5px 5px #888888;" class="styled-table"')
-
-    # CSS personalizado para o efeito de hover
+    # Adicionando efeito de hover nas linhas da tabela com CSS
     css = """
     <style>
     .styled-table tbody tr:hover {
-        background-color: #d8f5ff !important;
+        background-color: #D4E6F1 !important;
     }
     </style>
     """
-    # Adicionando o CSS ao HTML da tabela
-    styled_df = styled_df.set_caption(css)
-
-    # Exibir a tabela estilizada sem o índice
+    st.markdown(css, unsafe_allow_html=True)
+    
     st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
-
-    #st.write(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
-
-
     # Adicionar uma quebra de linha
-    st.markdown("")  
-
+    st.markdown("") 
     # Adicionar um botão de download para o CSV
     st.download_button(
         label="Baixar CSV",
