@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw, ImageOps
 st.set_page_config(
     page_title="Dashboard BACEN",
     page_icon="🏂",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="expanded")
 
 # Função para carregar os dados do JSON
@@ -147,10 +147,10 @@ with col[0]:
 
     grafCombEstado = (grafCombEstado + text)
 
-    #st.altair_chart(grafCombEstado)
+    st.altair_chart(grafCombEstado)
 
 
-    st.altair_chart(grafCombEstado, use_container_width=True)
+    #st.altair_chart(grafCombEstado, use_container_width=True)
 
 
     # Início Tabela
@@ -212,9 +212,9 @@ with col[0]:
     styled_df = styled_df.set_caption(css)
 
     # Exibir a tabela estilizada sem o índice
-    #st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
+    st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
 
-    st.write(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
+    #st.write(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
 
 
     # Adicionar uma quebra de linha
