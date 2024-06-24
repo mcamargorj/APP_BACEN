@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw, ImageOps
 # Configurar layout da página
 st.set_page_config(
     page_title="Dashboard BACEN",
-    page_icon="🏂",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -55,10 +55,10 @@ with st.sidebar:
     # Carregar os dados
     df = load_data()
 
-    # Obtendo listas únicas de tipos, anos e periodicidades
+    # Obtendo listas únicas
     tipos_unicos = df['tipo'].unique().tolist()
 
-    # Criando widgets dropdown para seleção
+    # Criando menu para seleção
     tipo_dropdown = st.selectbox('Selecione o tipo:', options=tipos_unicos, index=1)
     ano_dropdown = st.selectbox('Selecione o ano:', options=df[df['tipo'] == tipo_dropdown]['ano'].unique().tolist(), index=9)
     periodicidade_dropdown = st.selectbox('Selecione a periodicidade:', options=df[(df['tipo'] == tipo_dropdown) & (df['ano'] == ano_dropdown)]['periodicidade'].unique().tolist())
@@ -74,7 +74,7 @@ response.raise_for_status()
 # Detectar a codificação do arquivo CSV
 encoding = chardet.detect(response.content)['encoding']
 
-# Tentar diferentes delimitadores para o CSV
+# Detectar os delimitadores para o CSV
 delimiters = [';', ',', '\t', '|', ' ']
 for delimiter in delimiters:
     try:
@@ -113,6 +113,9 @@ with col[0]:
 
     st.markdown(f'**Empresa**: {fAdms}')
 
+
+    # Gráfico de barras com Altair
+    
     # Ajustar os dados para o gráfico
     dadosUsuario = dadosUsuario.melt(id_vars=[coluna_empresa], value_vars=['Quantidade de reclamações reguladas procedentes', 'Quantidade de reclamações reguladas - outras', 'Quantidade de reclamações não reguladas'], var_name='Tipo de Reclamação', value_name='Quantidade')
 
@@ -121,9 +124,7 @@ with col[0]:
         'Quantidade de reclamações reguladas procedentes': 'Reguladas Procedentes',
         'Quantidade de reclamações reguladas - outras': 'Reguladas Outras',
         'Quantidade de reclamações não reguladas': 'Não Reguladas'
-    })
-
-    # Gráfico interativo de barras com Altair
+    })    
     
     grafCombEstado = alt.Chart(dadosUsuario).mark_bar().encode(
         x=alt.X('Tipo de Reclamação:N', title='Tipo de Reclamação', axis=alt.Axis(labelAngle=-45)),
@@ -139,10 +140,10 @@ with col[0]:
     text = grafCombEstado.mark_text(
         align='center',
         baseline='middle',
-        dx=0,  # Nudge the text to the right so it doesn't appear on top of the bar
-        dy=-5  # Nudge the text upward for better alignment
+        dx=0,  
+        dy=-5  
     ).encode(
-        text='Quantidade:Q'  # Use the 'Quantidade' column for the text
+        text='Quantidade:Q'  
     )
 
     grafCombEstado = (grafCombEstado + text)
@@ -164,7 +165,7 @@ with col[0]:
     df_ranking_top_10 = df_ranking_top_10[cols]
     df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].map(lambda x: f"{x:.2f}")
 
-    # Renomear as colunas
+    # Renomeando as colunas
     df_ranking_top_10 = df_ranking_top_10.rename(columns={
         'Instituição financeira': 'Instituição Financeira',
         'Administradora de consórcio': 'Administradora de Consórcio',
@@ -187,7 +188,7 @@ with col[0]:
 
     # Adicionando efeito de hover nas linhas da tabela com CSS
     styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px solid #D3D3D3; box-shadow: 5px 5px 5px #888888;" class="styled-table"')
-    # Adicionando efeito de hover nas linhas da tabela com CSS
+    
     css = """
     <style>
     .styled-table tbody tr:hover {
@@ -198,8 +199,9 @@ with col[0]:
     st.markdown(css, unsafe_allow_html=True)
     
     st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
-    # Adicionar uma quebra de linha
+    
     st.markdown("") 
+    
     # Adicionar um botão de download para o CSV
     st.download_button(
         label="Baixar CSV",
