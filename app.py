@@ -153,7 +153,7 @@ with col[0]:
 
 
     # Tabela
-    st.markdown('<h2 style="font-size: 26px;">Ranking de Reclamações</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 style="font-size: 22px;">Ranking de Reclamações</h2>', unsafe_allow_html=True)
 
     # Tratamento dos dados da coluna índice e rank
     df_csv['Índice'] = df_csv['Índice'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
@@ -178,8 +178,8 @@ with col[0]:
 
     # Definindo o estilo da tabela
     styled_df = df_ranking_top_10.style.set_table_styles([
-        {'selector': 'thead th', 'props': [('font-size', '12pt'), ('font-weight', 'bold'), ('text-align', 'center'), ('background-color', '#2E4053'), ('color', 'white')]},
-        {'selector': 'tbody td', 'props': [('font-size', '10pt'), ('text-align', 'center')]},
+        {'selector': 'thead th', 'props': [('font-size', '10pt'), ('font-weight', 'bold'), ('text-align', 'center'), ('background-color', '#2E4053'), ('color', 'white')]},
+        {'selector': 'tbody td', 'props': [('font-size', '08pt'), ('text-align', 'center')]},
         {'selector': 'td.col1', 'props': [('max-width', '1000px'), ('white-space', 'normal'), ('text-align', 'left')]},
         {'selector': 'td.col0', 'props': [('font-weight', 'bold'), ('text-align', 'center')]},
         {'selector': 'tbody tr:nth-child(even)', 'props': [('background-color', '#F7F9F9')]},
