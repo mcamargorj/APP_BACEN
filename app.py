@@ -133,7 +133,7 @@ with col[0]:
                         scale=alt.Scale(range=['#00aca8', '#1d2262', '#d4096a']))
     ).properties(
         height=400,
-        width=650
+        width=600
     )
 
     # Adicionando os valores numéricos nas barras
