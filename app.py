@@ -169,7 +169,7 @@ with col[0]:
     df_ranking_top_10 = df_ranking_top_10.rename(columns={
         'Instituição financeira': 'Instituição Financeira',
         'Administradora de consórcio': 'Administradora de Consórcio',
-        'Índice': 'Índice <span style="cursor: pointer;" title="Número de reclamações dividido pelo número de consorciados ativos e multiplicado por 1.000.000">ℹ️</span>', 
+        'Índice': 'Índice <span style="cursor: pointer;" title="Número de reclamações procedentes dividido pelo número de consorciados ativos e multiplicado por 1.000.000">ℹ️</span>', 
         'Quantidade de reclamações reguladas procedentes': 'Reguladas Procedentes',
         'Quantidade de reclamações reguladas - outras': 'Reguladas Outras',
         'Quantidade de reclamações não reguladas': 'Não Reguladas',
