@@ -20,11 +20,6 @@ Este projeto utiliza o Streamlit para criar uma interface interativa que permite
 
 4. **Download de Dados** 💾:
     - O usuário pode baixar o ranking das 10 instituições com mais reclamações em formato CSV.
-
-        label="Baixar CSV",
-        data=df_ranking_top_10.to_csv(index=False).encode('utf-8'),
-        file_name='df_ranking_top_10.csv',
-        mime='text/csv'
       
 ## Contribuições
 
