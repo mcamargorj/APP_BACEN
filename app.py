@@ -52,7 +52,7 @@ with st.sidebar:
     rounded_logo = cantos_arredondados(logo, 20)
     st.image(rounded_logo, use_column_width=True)
 
-    # Carregar os dados
+    # Carregar os dados do JSON 
     df = load_data()
 
     # Obtendo listas únicas
