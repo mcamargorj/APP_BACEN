@@ -60,7 +60,7 @@ with st.sidebar:
 
     # Criando menu para seleção
     tipo_dropdown = st.selectbox('Selecione o tipo:', options=tipos_unicos, index=1)
-    ano_dropdown = st.selectbox('Selecione o ano:', options=df[df['tipo'] == tipo_dropdown]['ano'].unique().tolist(), index=8)
+    ano_dropdown = st.selectbox('Selecione o ano:', options=df[df['tipo'] == tipo_dropdown]['ano'].unique().tolist(), index=10)
     periodicidade_dropdown = st.selectbox('Selecione a periodicidade:', options=df[(df['tipo'] == tipo_dropdown) & (df['ano'] == ano_dropdown)]['periodicidade'].unique().tolist())
     periodo_dropdown = st.selectbox('Selecione o período:', options=df[(df['tipo'] == tipo_dropdown) & (df['ano'] == ano_dropdown) & (df['periodicidade'] == periodicidade_dropdown)]['periodo'].unique().tolist())
 
