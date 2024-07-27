@@ -194,6 +194,9 @@ with col[0]:
     .styled-table tbody tr:hover {
         background-color: #D4E6F1 !important;
     }
+    .styled-table tbody td:nth-child(3) {
+    font-size: 08pt !important;
+    }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
