@@ -205,17 +205,26 @@ with col[0]:
     
     st.markdown("") 
     
-    # Adicionar um botão de download para o CSV
-    #df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].astype(str).str.replace(r'<[^>]*>', '', regex=True)
+    import pandas as pd
+import streamlit as st
 
-# Converta os dados para o tipo apropriado, se necessário
-    #df_ranking_top_10['Índice'] = pd.to_numeric(df_ranking_top_10['Índice'], errors='coerce')
+# Supondo que df_ranking_top_10 seja seu DataFrame
+
+# Remova qualquer HTML ou CSS das colunas, se presente
+if 'Índice' in df_ranking_top_10.columns:
+    df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].astype(str).str.replace(r'<[^>]*>', '', regex=True)
+
+    # Converta a coluna 'Índice' para float (ou outro tipo adequado)
+    df_ranking_top_10['Índice'] = pd.to_numeric(df_ranking_top_10['Índice'], errors='coerce')
+
+# Verifique se o DataFrame está correto
+st.write(df_ranking_top_10.head())
 
 # Baixar o CSV
-    st.download_button(
-       label="Baixar CSV",
-       data=df_ranking_top_10.to_csv(index=False).encode('utf-8'),
-       unsafe_allow_html=True,
-       file_name='df_ranking_top_5.csv',
-       mime='text/csv'
-   )
+st.download_button(
+    label="Baixar CSV",
+    data=df_ranking_top_10.to_csv(index=False).encode('utf-8'),
+    unsafe_allow_html=True,
+    file_name='df_ranking_top_5.csv',
+    mime='text/csv'
+)
