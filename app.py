@@ -206,9 +206,16 @@ with col[0]:
     st.markdown("") 
     
     # Adicionar um botão de download para o CSV
+    df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].astype(str).str.replace(r'<[^>]*>', '', regex=True)
+
+# Converta os dados para o tipo apropriado, se necessário
+    df_ranking_top_10['Índice'] = pd.to_numeric(df_ranking_top_10['Índice'], errors='coerce')
+
+# Baixar o CSV
     st.download_button(
-        label="Baixar CSV",
-        data=df_ranking_top_10.to_csv(index=False).encode('utf-8'),
-        file_name='df_ranking_top_5.csv',
-        mime='text/csv'
-    )
+       label="Baixar CSV",
+       data=df_ranking_top_10.to_csv(index=False).encode('utf-8'),
+       unsafe_allow_html=True,
+       file_name='df_ranking_top_5.csv',
+       mime='text/csv'
+   )
