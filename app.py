@@ -209,7 +209,7 @@ with col[0]:
     #df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].astype(str).str.replace(r'<[^>]*>', '', regex=True)
 
 # Converta os dados para o tipo apropriado, se necessário
-    df_ranking_top_10['Índice'] = pd.to_numeric(df_ranking_top_10['Índice'], errors='coerce')
+    #df_ranking_top_10['Índice'] = pd.to_numeric(df_ranking_top_10['Índice'], errors='coerce')
 
 # Baixar o CSV
     st.download_button(
