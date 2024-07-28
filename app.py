@@ -208,12 +208,12 @@ with col[0]:
 
 
     # Verificação e limpeza do DataFrame
-    if 'Índice' in df_ranking_top_10.columns:
-        df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].astype(str).str.replace(r'<[^>]*>', '', regex=True)
-        df_ranking_top_10['Índice'] = pd.to_numeric(df_ranking_top_10['Índice'], errors='coerce')
+    #if 'Índice' in df_ranking_top_10.columns:
+        #df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].astype(str).str.replace(r'<[^>]*>', '', regex=True)
+        #df_ranking_top_10['Índice'] = pd.to_numeric(df_ranking_top_10['Índice'], errors='coerce')
 
 # Exibir o DataFrame para verificação
-    st.write(df_ranking_top_10.head())
+    #st.write(df_ranking_top_10.head())
 
 # Preparar os dados para download
     csv_data = df_ranking_top_10.to_csv(index=False).encode('utf-8')
