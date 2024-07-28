@@ -205,25 +205,3 @@ with col[0]:
     
     st.markdown("") 
     
-
-
-    # Verificação e limpeza do DataFrame
-    #if 'Índice' in df_ranking_top_10.columns:
-        #df_ranking_top_10['Índice'] = df_ranking_top_10['Índice'].astype(str).str.replace(r'<[^>]*>', '', regex=True)
-        #df_ranking_top_10['Índice'] = pd.to_numeric(df_ranking_top_10['Índice'], errors='coerce')
-
-# Exibir o DataFrame para verificação
-    #st.write(df_ranking_top_10.head())
-
-# Preparar os dados para download
-    csv_data = df_ranking_top_10.to_csv(index=False).encode('utf-8')
-
-# Botão de download
-    st.download_button(
-        label="Baixar CSV",
-        data=csv_data,
-        unsafe_allow_html=True,
-        file_name='df_ranking_top_5.csv',
-        mime='text/csv'
-    )
-
