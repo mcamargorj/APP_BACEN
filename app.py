@@ -186,22 +186,29 @@ with col[0]:
         {'selector': 'tbody tr:nth-child(odd)', 'props': [('background-color', 'white')]}
     ]).set_properties(**{'white-space': 'pre-wrap', 'text-overflow': 'ellipsis'})
 
-    # Adicionando efeito de hover nas linhas da tabela com CSS
+# Adicionando efeito de hover nas linhas da tabela com CSS
     styled_df.set_table_attributes('style="border-collapse: collapse; border: 2px solid #D3D3D3; box-shadow: 5px 5px 5px #888888;" class="styled-table"')
-    
+    # Adicionando efeito de hover nas linhas da tabela com CSS
     css = """
     <style>
     .styled-table tbody tr:hover {
         background-color: #D4E6F1 !important;
-    }
-    .styled-table tbody td:nth-child(3) {
-    font-size: 08pt !important;
     }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
     
     st.markdown(styled_df.hide(axis='index').to_html(escape=False), unsafe_allow_html=True)
-    
+    # Adicionar uma quebra de linha
     st.markdown("") 
+    # Adicionar um botão de download para o CSV
+    st.download_button(
+        label="Baixar CSV",
+        data=df_ranking_top_10.to_csv(index=False).encode('utf-8'),
+        file_name='df_ranking_top_10.csv',
+        mime='text/csv'
+    )
+
+
+
     
