@@ -159,7 +159,7 @@ with col[0]:
     df_csv['Índice'] = df_csv['Índice'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
     df_csv['Índice'] = pd.to_numeric(df_csv['Índice'], errors='coerce')
     df_ranking = df_csv.sort_values(by='Índice', ascending=False)
-    df_ranking_top_10 = df_ranking.head(10).reset_index(drop=True)
+    df_ranking_top_10 = df_ranking.head(30).reset_index(drop=True)
     df_ranking_top_10['Rank'] = [f"{i+1}º" for i in df_ranking_top_10.index]
     cols = ['Rank'] + [col for col in df_ranking_top_10.columns if col != 'Rank']
     df_ranking_top_10 = df_ranking_top_10[cols]
