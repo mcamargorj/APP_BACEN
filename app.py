@@ -205,7 +205,7 @@ with col[0]:
     st.download_button(
         label="Baixar CSV",
         data=df_ranking_top_10.to_csv(index=False).encode('utf-8'),
-        file_name='df_ranking_top_10.csv',
+        file_name='df_ranking.csv',
         mime='text/csv'
     )
 
