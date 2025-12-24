@@ -117,39 +117,33 @@ def limpar_dados_csv(df):
     if df.empty:
         return df
     
+    # Fazer uma cópia para não modificar o original
+    df = df.copy()
+    
     # Remover colunas completamente vazias
     df = df.dropna(axis=1, how='all')
     
     # Remover linhas completamente vazias
     df = df.dropna(how='all')
     
-    # Remover colunas que são apenas índices numéricos
+    # Remover apenas colunas de índice do pandas (Unnamed: 0, etc.)
     colunas_para_remover = []
     for col in df.columns:
-        if str(col).strip() in ['', 'Unnamed: 0', 'Unnamed: 0.1', 'index']:
-            colunas_para_remover.append(col)
-        elif df[col].astype(str).str.contains('^[0-9]+$').all():
+        if str(col).strip() in ['', 'Unnamed: 0', 'Unnamed: 0.1', 'index', 'Unnamed: 0.1.1']:
             colunas_para_remover.append(col)
     
     df = df.drop(columns=colunas_para_remover, errors='ignore')
     
-    # Padronizar nomes de colunas
+    # Padronizar nomes de colunas - MANTENDO TODAS AS COLUNAS ORIGINAIS
     colunas_mapeamento = {
         'Instituição financeira': 'Instituição',
         'Administradora de consórcio': 'Instituição',
         'Instituição Financeira': 'Instituição',
         'Administradora de Consórcio': 'Instituição',
-        'Índice': 'Índice',
-        'Quantidade de reclamações reguladas procedentes': 'Reguladas Procedentes',
-        'Quantidade de reclamações reguladas - outras': 'Reguladas Outras',
-        'Quantidade de reclamações não reguladas': 'Não Reguladas',
-        'Quantidade total de reclamações': 'Total Reclamações',
-        'Quantidade de reclamações reguladas procedentes': 'Qtd Reg Procedentes',
-        'Quantidade de reclamações reguladas - outras': 'Qtd Reg Outras',
-        'Quantidade de reclamações não reguladas': 'Qtd Não Reguladas'
+        'Índice': 'Índice'
     }
     
-    # Renomear colunas existentes
+    # Renomear apenas as colunas principais
     df = df.rename(columns={col: colunas_mapeamento.get(col, col) for col in df.columns})
     
     # Garantir que todas as colunas sejam strings
@@ -305,6 +299,12 @@ if df_csv.empty:
     st.warning("Não foi possível processar os dados do CSV.")
     st.stop()
 
+# Mostrar colunas disponíveis na sidebar para debug
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Colunas disponíveis no CSV:**")
+for col in df_csv.columns:
+    st.sidebar.text(f"- {col}")
+
 # Identificar qual coluna contém o nome da instituição
 coluna_instituicao = None
 possiveis_colunas = ['Instituição', 'Instituição financeira', 'Administradora de consórcio', 
@@ -318,7 +318,7 @@ for col in possiveis_colunas:
 # Se não encontrou, usar a primeira coluna que parece ser de instituição
 if not coluna_instituicao:
     for col in df_csv.columns:
-        if any(termo in str(col).lower() for termo in ['instituição', 'administradora', 'banco', 'financeira']):
+        if any(termo in str(col).lower() for termo in ['instituição', 'administradora', 'banco', 'financeira', 'nome']):
             coluna_instituicao = col
             break
     else:
@@ -426,55 +426,61 @@ def extrair_valor_numerico(valor, default=0):
         valor_limpo = valor_str.replace('.', '').replace(',', '.')
         return float(valor_limpo)
     except:
-        return default
+        try:
+            # Tentar converter diretamente
+            return float(valor_str)
+        except:
+            return default
 
-# Verificar se as colunas existem antes de acessá-las
-# Primeiro, vamos listar todas as colunas disponíveis para debug
-st.sidebar.markdown("---")
-st.sidebar.markdown("**Colunas disponíveis:**")
-for col in df_csv.columns:
-    st.sidebar.text(f"- {col}")
+# ================= IDENTIFICAR COLUNAS DE RECLAMAÇÕES =================
 
-# Procurar por colunas que contenham reclamações
-colunas_reclamacoes = []
-for col in df_csv.columns:
-    col_lower = col.lower()
-    if any(termo in col_lower for termo in ['reclamação', 'procedente', 'regulada', 'não regulada']):
-        colunas_reclamacoes.append(col)
-
-# Mapear nomes de colunas para nomes amigáveis
-mapeamento_colunas = {
-    'Reguladas Procedentes': 'Reguladas Procedentes',
-    'Qtd Reg Procedentes': 'Reguladas Procedentes',
-    'Não Reguladas': 'Não Reguladas', 
-    'Qtd Não Reguladas': 'Não Reguladas',
-    'Reguladas Outras': 'Reguladas Outras',
-    'Qtd Reg Outras': 'Reguladas Outras',
-    'Total Reclamações': 'Total Reclamações'
+# Lista de padrões para buscar colunas de reclamações
+padroes_reclamacoes = {
+    'Reguladas Procedentes': ['procedente', 'regulada.*procedente', 'reclamações.*procedente'],
+    'Reguladas Outras': ['regulada.*outra', 'outra.*regulada', 'reclamações.*outra'],
+    'Não Reguladas': ['não.*regulada', 'nao.*regulada', 'não regulada', 'nao regulada', 'reclamações.*não.*regulada'],
+    'Total Reclamações': ['total.*reclamação', 'reclamações.*total', 'quantidade.*total']
 }
+
+# Buscar colunas correspondentes aos padrões
+colunas_encontradas = {}
+
+for tipo_nome, padroes in padroes_reclamacoes.items():
+    for col in df_csv.columns:
+        col_lower = str(col).lower()
+        for padrao in padroes:
+            if padrao in col_lower:
+                colunas_encontradas[tipo_nome] = col
+                break
+        if tipo_nome in colunas_encontradas:
+            break
+
+# Se não encontrou pelo padrão, tentar nomes exatos
+nomes_exatos = {
+    'Reguladas Procedentes': 'Quantidade de reclamações reguladas procedentes',
+    'Reguladas Outras': 'Quantidade de reclamações reguladas - outras',
+    'Não Reguladas': 'Quantidade de reclamações não reguladas',
+    'Total Reclamações': 'Quantidade total de reclamações'
+}
+
+for tipo_nome, nome_exato in nomes_exatos.items():
+    if tipo_nome not in colunas_encontradas and nome_exato in df_csv.columns:
+        colunas_encontradas[tipo_nome] = nome_exato
+
+# Mostrar quais colunas foram encontradas
+st.sidebar.markdown("**Colunas de reclamações identificadas:**")
+for tipo, coluna in colunas_encontradas.items():
+    st.sidebar.text(f"- {tipo}: {coluna}")
 
 # Buscar valores para cada tipo de reclamação
 valores_reclamacoes = {}
 
-for tipo_busca, nome_amigavel in mapeamento_colunas.items():
-    # Tentar encontrar a coluna
-    coluna_encontrada = None
-    
-    # Tentar match exato primeiro
-    if tipo_busca in df_csv.columns:
-        coluna_encontrada = tipo_busca
+for tipo_nome, coluna_nome in colunas_encontradas.items():
+    if coluna_nome in dados_empresa:
+        valor = extrair_valor_numerico(dados_empresa[coluna_nome])
+        valores_reclamacoes[tipo_nome] = valor
     else:
-        # Tentar match parcial
-        for col in df_csv.columns:
-            if tipo_busca.lower() in col.lower() or col.lower() in tipo_busca.lower():
-                coluna_encontrada = col
-                break
-    
-    if coluna_encontrada and coluna_encontrada in dados_empresa:
-        valor = extrair_valor_numerico(dados_empresa[coluna_encontrada])
-        valores_reclamacoes[nome_amigavel] = valor
-    else:
-        valores_reclamacoes[nome_amigavel] = 0
+        valores_reclamacoes[tipo_nome] = 0
 
 # Exibir métricas
 with col2:
@@ -494,13 +500,16 @@ dados_grafico = []
 tipos_grafico = ['Reguladas Procedentes', 'Reguladas Outras', 'Não Reguladas']
 for tipo_grafico in tipos_grafico:
     valor = valores_reclamacoes.get(tipo_grafico, 0)
-    if valor > 0:  # Só adicionar se houver valor
-        dados_grafico.append({
-            'Tipo de Reclamação': tipo_grafico,
-            'Quantidade': valor
-        })
+    # Mostrar no gráfico mesmo se for 0, para visualização completa
+    dados_grafico.append({
+        'Tipo de Reclamação': tipo_grafico,
+        'Quantidade': valor
+    })
 
-if dados_grafico:
+# Verificar se há dados para mostrar
+total_reclamacoes = sum(valores_reclamacoes.values())
+
+if total_reclamacoes > 0:
     df_grafico = pd.DataFrame(dados_grafico)
     
     # Criar gráfico
@@ -530,7 +539,22 @@ if dados_grafico:
     
     st.altair_chart(grafico + texto, use_container_width=True)
 else:
-    st.info(f"Não há dados de reclamações disponíveis para {empresa}")
+    # Mostrar gráfico mesmo com zeros, mas com mensagem
+    df_grafico = pd.DataFrame(dados_grafico)
+    
+    grafico = alt.Chart(df_grafico).mark_bar().encode(
+        x=alt.X('Tipo de Reclamação:N', title='Tipo de Reclamação', sort=None),
+        y=alt.Y('Quantidade:Q', title='Quantidade'),
+        color=alt.Color('Tipo de Reclamação:N', 
+                       scale=alt.Scale(range=['#00aca8', '#1d2262', '#d4096a']),
+                       legend=alt.Legend(title="Tipo"))
+    ).properties(
+        title=f'Distribuição de Reclamações - {empresa} (Sem reclamações registradas)',
+        height=400
+    )
+    
+    st.altair_chart(grafico, use_container_width=True)
+    st.info(f"A empresa {empresa} não possui reclamações registradas no período selecionado.")
 
 # ================= RANKING - TABELA PRINCIPAL =================
 st.markdown("## 🏆 Ranking de Reclamações")
@@ -647,7 +671,6 @@ with st.expander("ℹ️ Informações sobre os dados"):
     st.markdown(f"""
     ### Sobre os dados:
     - **Índice**: Número de reclamações reguladas procedentes dividido pelo número de clientes e multiplicado por 1.000.000. 
-      Formato brasileiro: **5.151,45** (ponto separador de milhar, vírgula separador decimal)
     - **Reguladas Procedentes**: Reclamações onde o cliente tinha razão
     - **Reguladas Outras**: Reclamações reguladas mas não procedentes
     - **Não Reguladas**: Reclamações fora do escopo de regulação do BACEN
@@ -666,9 +689,21 @@ with st.expander("ℹ️ Informações sobre os dados"):
     - **Índice**: {valor_indice}
     - **Reguladas Procedentes**: {valor_rp:,}
     - **Não Reguladas**: {valor_nr:,}
+    - **Total de reclamações**: {sum(valores_reclamacoes.values()):,}
     """)
 
 # Mostrar dados completos da empresa selecionada para debug
-with st.expander("🔍 Ver dados completos da empresa (debug)"):
-    st.write("Dados completos da empresa selecionada:")
-    st.write(dados_empresa)
+with st.expander("🔍 Ver dados completos da empresa selecionada"):
+    st.write(f"Dados completos para **{empresa}**:")
+    
+    # Criar uma tabela com todos os dados da empresa
+    dados_tabela = []
+    for col in df_csv.columns:
+        if col in dados_empresa:
+            dados_tabela.append({
+                'Coluna': col,
+                'Valor': dados_empresa[col]
+            })
+    
+    df_debug = pd.DataFrame(dados_tabela)
+    st.dataframe(df_debug, use_container_width=True)
