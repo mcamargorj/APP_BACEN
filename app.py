@@ -491,6 +491,73 @@ with col3:
     valor_nr = int(valores_reclamacoes.get('Não Reguladas', 0))
     st.metric("Não Reguladas", f"{valor_nr:,}".replace(",", "."))
 
+# # ================= GRÁFICO DE RECLAMAÇÕES =================
+# st.markdown("## 📈 Distribuição de Reclamações")
+
+# # Preparar dados para o gráfico
+# dados_grafico = []
+
+# tipos_grafico = ['Reguladas Procedentes', 'Reguladas Outras', 'Não Reguladas']
+# for tipo_grafico in tipos_grafico:
+#     valor = valores_reclamacoes.get(tipo_grafico, 0)
+#     # Mostrar no gráfico mesmo se for 0, para visualização completa
+#     dados_grafico.append({
+#         'Tipo de Reclamação': tipo_grafico,
+#         'Quantidade': valor
+#     })
+
+# # Verificar se há dados para mostrar
+# total_reclamacoes = sum(valores_reclamacoes.values())
+
+# if total_reclamacoes > 0:
+#     df_grafico = pd.DataFrame(dados_grafico)
+    
+#     # Criar gráfico
+#     grafico = alt.Chart(df_grafico).mark_bar().encode(
+#         x=alt.X('Tipo de Reclamação:N', title='Tipo de Reclamação', sort=None),
+#         y=alt.Y('Quantidade:Q', title='Quantidade'),
+#         color=alt.Color('Tipo de Reclamação:N', 
+#                        scale=alt.Scale(range=['#00aca8', '#1d2262', '#d4096a']),
+#                        legend=alt.Legend(title="Tipo")),
+#         tooltip=['Tipo de Reclamação', alt.Tooltip('Quantidade:Q', title='Quantidade', format=',.0f')]
+#     ).properties(
+#         title=f'Distribuição de Reclamações - {empresa}',
+#         height=400
+#     )
+    
+#     # Adicionar valores no topo das barras
+#     texto = grafico.mark_text(
+#         align='center',
+#         baseline='bottom',
+#         dy=-5,
+#         fontSize=12,
+#         fontWeight='bold',
+#         color='white'
+#     ).encode(
+#         text=alt.Text('Quantidade:Q', format=',.0f')
+#     )
+    
+#     st.altair_chart(grafico + texto, use_container_width=True)
+# else:
+#     # Mostrar gráfico mesmo com zeros, mas com mensagem
+#     df_grafico = pd.DataFrame(dados_grafico)
+    
+#     grafico = alt.Chart(df_grafico).mark_bar().encode(
+#         x=alt.X('Tipo de Reclamação:N', title='Tipo de Reclamação', sort=None),
+#         y=alt.Y('Quantidade:Q', title='Quantidade'),
+#         color=alt.Color('Tipo de Reclamação:N', 
+#                        scale=alt.Scale(range=['#00aca8', '#1d2262', '#d4096a']),
+#                        legend=alt.Legend(title="Tipo"))
+#     ).properties(
+#         title=f'Distribuição de Reclamações - {empresa} (Sem reclamações registradas)',
+#         height=400
+#     )
+    
+#     st.altair_chart(grafico, use_container_width=True)
+#     st.info(f"A empresa {empresa} não possui reclamações registradas no período selecionado.")
+
+# ... (código anterior permanece igual até a parte do gráfico) ...
+
 # ================= GRÁFICO DE RECLAMAÇÕES =================
 st.markdown("## 📈 Distribuição de Reclamações")
 
@@ -512,49 +579,87 @@ total_reclamacoes = sum(valores_reclamacoes.values())
 if total_reclamacoes > 0:
     df_grafico = pd.DataFrame(dados_grafico)
     
-    # Criar gráfico
-    grafico = alt.Chart(df_grafico).mark_bar().encode(
-        x=alt.X('Tipo de Reclamação:N', title='Tipo de Reclamação', sort=None),
-        y=alt.Y('Quantidade:Q', title='Quantidade'),
+    # Criar gráfico com configurações para não cortar
+    grafico = alt.Chart(df_grafico).mark_bar(
+        size=60  # Aumentar a largura das barras
+    ).encode(
+        x=alt.X('Tipo de Reclamação:N', 
+               title='Tipo de Reclamação', 
+               sort=None,
+               axis=alt.Axis(labelAngle=0)),  # Manter labels horizontais
+        y=alt.Y('Quantidade:Q', 
+               title='Quantidade',
+               scale=alt.Scale(padding=0.2)),  # Adicionar padding no eixo Y
         color=alt.Color('Tipo de Reclamação:N', 
                        scale=alt.Scale(range=['#00aca8', '#1d2262', '#d4096a']),
-                       legend=alt.Legend(title="Tipo")),
+                       legend=alt.Legend(title="Tipo de Reclamação")),
         tooltip=['Tipo de Reclamação', alt.Tooltip('Quantidade:Q', title='Quantidade', format=',.0f')]
     ).properties(
         title=f'Distribuição de Reclamações - {empresa}',
-        height=400
+        height=450,  # Aumentar altura
+        width=600    # Definir largura fixa para melhor controle
     )
     
-    # Adicionar valores no topo das barras
+    # Adicionar valores no topo das barras com configuração melhorada
     texto = grafico.mark_text(
         align='center',
-        baseline='bottom',
-        dy=-5,
-        fontSize=12,
+        baseline='middle',  # Mudar para middle para melhor posicionamento
+        dy=-25,  # Ajustar posição vertical (negativo = acima da barra)
+        fontSize=14,
         fontWeight='bold',
         color='white'
     ).encode(
         text=alt.Text('Quantidade:Q', format=',.0f')
     )
     
-    st.altair_chart(grafico + texto, use_container_width=True)
+    # Combinar gráfico e texto
+    chart = (grafico + texto).configure_view(
+        strokeWidth=0  # Remover borda do gráfico
+    ).configure_axis(
+        labelFontSize=12,
+        titleFontSize=14
+    ).configure_title(
+        fontSize=16,
+        anchor='start'  # Alinhar título à esquerda
+    )
+    
+    st.altair_chart(chart, use_container_width=True)
+    
 else:
     # Mostrar gráfico mesmo com zeros, mas com mensagem
     df_grafico = pd.DataFrame(dados_grafico)
     
-    grafico = alt.Chart(df_grafico).mark_bar().encode(
-        x=alt.X('Tipo de Reclamação:N', title='Tipo de Reclamação', sort=None),
-        y=alt.Y('Quantidade:Q', title='Quantidade'),
+    grafico = alt.Chart(df_grafico).mark_bar(
+        size=60
+    ).encode(
+        x=alt.X('Tipo de Reclamação:N', 
+               title='Tipo de Reclamação', 
+               sort=None,
+               axis=alt.Axis(labelAngle=0)),
+        y=alt.Y('Quantidade:Q', 
+               title='Quantidade',
+               scale=alt.Scale(domain=[0, 1])),  # Domínio fixo para zeros
         color=alt.Color('Tipo de Reclamação:N', 
                        scale=alt.Scale(range=['#00aca8', '#1d2262', '#d4096a']),
-                       legend=alt.Legend(title="Tipo"))
+                       legend=alt.Legend(title="Tipo de Reclamação"))
     ).properties(
         title=f'Distribuição de Reclamações - {empresa} (Sem reclamações registradas)',
-        height=400
+        height=450,
+        width=600
+    ).configure_view(
+        strokeWidth=0
+    ).configure_axis(
+        labelFontSize=12,
+        titleFontSize=14
+    ).configure_title(
+        fontSize=16,
+        anchor='start'
     )
     
     st.altair_chart(grafico, use_container_width=True)
     st.info(f"A empresa {empresa} não possui reclamações registradas no período selecionado.")
+
+# ... (restante do código permanece igual) ...
 
 # ================= RANKING - TABELA PRINCIPAL =================
 st.markdown("## 🏆 Ranking de Reclamações")
