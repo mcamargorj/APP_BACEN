@@ -932,4 +932,4 @@ with st.expander("🔍 Ver dados completos da empresa selecionada"):
             })
     
     df_debug = pd.DataFrame(dados_tabela)
-    st.dataframe(df_debug, use_container_width=True)
+    st.dataframe(df_debug, use_container_width=True, hide_index=True)
