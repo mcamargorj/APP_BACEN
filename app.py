@@ -235,7 +235,7 @@ with st.sidebar:
         .unique()
         .tolist()
     )
-    if não anos:
+    if not anos:
         st.error("Nenhum ano disponível.")
         st.stop()
 
