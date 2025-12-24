@@ -7,7 +7,7 @@ import altair as alt
 from PIL import Image, ImageDraw, ImageOps
 from csv import Sniffer
 
-# Configurar layout da página
+# ================= CONFIGURAÇÃO DA PÁGINA =================
 st.set_page_config(
     page_title="Dashboard BACEN",
     page_icon="📊",
@@ -15,11 +15,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Função para carregar os dados do JSON
+# ================= FUNÇÕES =================
 @st.cache_data
 def load_data():
-    json_url = "https://www3.bcb.gov.br/rdrweb/rest/ext/ranking"
-    response = requests.get(json_url)
+    url = "https://www3.bcb.gov.br/rdrweb/rest/ext/ranking"
+    response = requests.get(url)
     data = response.json()
 
     df = pd.json_normalize(
@@ -35,10 +35,11 @@ def load_data():
     df.columns = ['tipo', 'ano', 'periodicidade', 'periodo']
     return df
 
-# Função para gerar o link do CSV
+
 def gerar_link_csv(ano, periodicidade, periodo, tipo):
-    base_url = "https://www3.bcb.gov.br/rdrweb/rest/ext/ranking/arquivo"
-    return f"{base_url}?ano={ano}&periodicidade={periodicidade}&periodo={periodo}&tipo={tipo}"
+    base = "https://www3.bcb.gov.br/rdrweb/rest/ext/ranking/arquivo"
+    return f"{base}?ano={ano}&periodicidade={periodicidade}&periodo={periodo}&tipo={tipo}"
+
 
 def cantos_arredondados(image, radius):
     mask = Image.new("L", image.size, 0)
@@ -50,54 +51,61 @@ def cantos_arredondados(image, radius):
 
 # ================= SIDEBAR =================
 with st.sidebar:
-    st.subheader('BASES DE RECLAMAÇÕES DO BACEN')
+    st.subheader("BASES DE RECLAMAÇÕES DO BACEN")
 
-    logo = Image.open('logo.png').convert("RGBA")
+    logo = Image.open("logo.png").convert("RGBA")
     st.image(cantos_arredondados(logo, 20), use_column_width=True)
 
     df = load_data()
 
+    # ---- Tipo
     tipos = sorted(df['tipo'].unique().tolist())
-    tipo_dropdown = st.selectbox('Selecione o tipo:', tipos)
+    if not tipos:
+        st.error("Nenhum tipo disponível.")
+        st.stop()
 
-    anos = sorted(df[df['tipo'] == tipo_dropdown]['ano'].unique().tolist())
-    ano_dropdown = st.selectbox('Selecione o ano:', anos, index=len(anos) - 1)
+    tipo = st.selectbox("Selecione o tipo:", tipos)
 
+    # ---- Ano
+    anos = sorted(df[df['tipo'] == tipo]['ano'].unique().tolist())
+    if not anos:
+        st.error("Nenhum ano disponível.")
+        st.stop()
+
+    ano = st.selectbox("Selecione o ano:", anos, index=len(anos) - 1)
+
+    # ---- Periodicidade
     periodicidades = df[
-        (df['tipo'] == tipo_dropdown) &
-        (df['ano'] == ano_dropdown)
+        (df['tipo'] == tipo) &
+        (df['ano'] == ano)
     ]['periodicidade'].unique().tolist()
 
-    periodicidade_dropdown = st.selectbox(
-        'Selecione a periodicidade:',
-        periodicidades
-    )
+    if not periodicidades:
+        st.error("Nenhuma periodicidade disponível.")
+        st.stop()
 
+    periodicidade = st.selectbox("Selecione a periodicidade:", periodicidades)
+
+    # ---- Período
     periodos = df[
-        (df['tipo'] == tipo_dropdown) &
-        (df['ano'] == ano_dropdown) &
-        (df['periodicidade'] == periodicidade_dropdown)
+        (df['tipo'] == tipo) &
+        (df['ano'] == ano) &
+        (df['periodicidade'] == periodicidade)
     ]['periodo'].unique().tolist()
 
-    periodo_dropdown = st.selectbox(
-        'Selecione o período:',
-        periodos,
-        index=len(periodos) - 1
-    )
+    if not periodos:
+        st.warning("Não há períodos disponíveis para este filtro.")
+        st.stop()
+
+    periodo = st.selectbox("Selecione o período:", periodos, index=len(periodos) - 1)
 
 # ================= DOWNLOAD CSV =================
-csv_url = gerar_link_csv(
-    ano_dropdown,
-    periodicidade_dropdown,
-    periodo_dropdown,
-    tipo_dropdown
-)
-
+csv_url = gerar_link_csv(ano, periodicidade, periodo, tipo)
 response = requests.get(csv_url)
 response.raise_for_status()
 
 encoding = chardet.detect(response.content)['encoding']
-csv_text = response.content.decode(encoding, errors='ignore')
+csv_text = response.content.decode(encoding, errors="ignore")
 
 try:
     delimiter = Sniffer().sniff(csv_text[:1000]).delimiter
@@ -107,7 +115,7 @@ except Exception:
     st.stop()
 
 if df_csv.empty:
-    st.warning("Nenhum dado disponível para o período selecionado.")
+    st.warning("O ranking para este período ainda não possui dados.")
     st.stop()
 
 # ================= COLUNAS =================
@@ -129,75 +137,82 @@ colunas_possiveis = {
 }
 
 coluna_empresa = None
-for key, cols in colunas_possiveis.items():
-    if key in df_csv.columns:
-        coluna_empresa = key
+for k, cols in colunas_possiveis.items():
+    if k in df_csv.columns:
+        coluna_empresa = k
         df_csv = df_csv[cols]
         break
 
 if not coluna_empresa:
-    st.error("Layout inesperado do CSV.")
+    st.error("Estrutura inesperada do CSV.")
     st.stop()
 
 # ================= HEADER =================
-st.header('BACEN: Empresa x Quantidade de Reclamações por Tipo')
+st.header("BACEN: Empresa x Quantidade de Reclamações por Tipo")
 
 empresa = st.selectbox(
     "Selecione a Empresa:",
     sorted(df_csv[coluna_empresa].unique())
 )
 
-dados_usuario = df_csv[df_csv[coluna_empresa] == empresa]
+dados_empresa = df_csv[df_csv[coluna_empresa] == empresa]
 
 # ================= GRÁFICO =================
-dados_grafico = dados_usuario.melt(
+dados_grafico = dados_empresa.melt(
     id_vars=[coluna_empresa],
     value_vars=[
         'Quantidade de reclamações reguladas procedentes',
         'Quantidade de reclamações reguladas - outras',
         'Quantidade de reclamações não reguladas'
     ],
-    var_name='Tipo de Reclamação',
-    value_name='Quantidade'
+    var_name="Tipo de Reclamação",
+    value_name="Quantidade"
 )
 
-dados_grafico['Tipo de Reclamação'] = dados_grafico['Tipo de Reclamação'].replace({
+dados_grafico["Tipo de Reclamação"] = dados_grafico["Tipo de Reclamação"].replace({
     'Quantidade de reclamações reguladas procedentes': 'Reguladas Procedentes',
     'Quantidade de reclamações reguladas - outras': 'Reguladas Outras',
     'Quantidade de reclamações não reguladas': 'Não Reguladas'
 })
 
 grafico = alt.Chart(dados_grafico).mark_bar().encode(
-    x=alt.X('Tipo de Reclamação:N', axis=alt.Axis(labelAngle=-30)),
-    y='Quantidade:Q',
-    color=alt.Color('Tipo de Reclamação:N',
-        scale=alt.Scale(range=['#00aca8', '#1d2262', '#d4096a'])
+    x=alt.X("Tipo de Reclamação:N", axis=alt.Axis(labelAngle=-30)),
+    y="Quantidade:Q",
+    color=alt.Color(
+        "Tipo de Reclamação:N",
+        scale=alt.Scale(range=["#00aca8", "#1d2262", "#d4096a"])
     )
 ).properties(height=400, width=600)
 
-texto = grafico.mark_text(dy=-5).encode(text='Quantidade:Q')
+texto = grafico.mark_text(dy=-5).encode(text="Quantidade:Q")
 
 st.altair_chart(grafico + texto)
 
 # ================= TABELA =================
 st.markdown("## Ranking de Reclamações")
 
-df_csv['Índice'] = (
-    df_csv['Índice']
-    .str.replace('.', '', regex=False)
-    .str.replace(',', '.', regex=False)
+df_csv["Índice"] = (
+    df_csv["Índice"]
+    .str.replace(".", "", regex=False)
+    .str.replace(",", ".", regex=False)
     .astype(float)
 )
 
-ranking = df_csv.sort_values('Índice', ascending=False).head(30).reset_index(drop=True)
-ranking.insert(0, 'Rank', [f"{i+1}º" for i in ranking.index])
-ranking['Índice'] = ranking['Índice'].map(lambda x: f"{x:.2f}")
+ranking = (
+    df_csv
+    .sort_values("Índice", ascending=False)
+    .head(30)
+    .reset_index(drop=True)
+)
+
+ranking.insert(0, "Rank", [f"{i+1}º" for i in ranking.index])
+ranking["Índice"] = ranking["Índice"].map(lambda x: f"{x:.2f}")
 
 st.dataframe(ranking, use_container_width=True)
 
 st.download_button(
     "Baixar CSV",
-    ranking.to_csv(index=False).encode('utf-8'),
+    ranking.to_csv(index=False).encode("utf-8"),
     "ranking_bacen.csv",
     "text/csv"
 )
