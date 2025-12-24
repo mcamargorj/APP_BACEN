@@ -67,13 +67,46 @@ def baixar_csv(url):
 
     encoding = chardet.detect(response.content)['encoding']
     csv_text = response.content.decode(encoding or "latin1", errors="ignore")
-
+    
+    # TENTATIVA 1: Detectar delimitador automaticamente
     try:
-        delimiter = Sniffer().sniff(csv_text[:1000]).delimiter
+        delimiter = Sniffer().sniff(csv_text[:10000]).delimiter
     except Exception:
         delimiter = ";"
-
-    df = pd.read_csv(io.StringIO(csv_text), sep=delimiter)
+    
+    # TENTATIVA 2: Ler o CSV
+    try:
+        df = pd.read_csv(io.StringIO(csv_text), sep=delimiter, dtype=str, on_bad_lines='warn')
+    except Exception as e:
+        st.warning(f"Tentativa 1 falhou: {str(e)[:100]}... Tentando método alternativo.")
+        
+        # TENTATIVA 3: Tentar com diferentes delimitadores
+        for delim in [';', ',', '\t', '|']:
+            try:
+                df = pd.read_csv(io.StringIO(csv_text), sep=delim, dtype=str, on_bad_lines='warn')
+                if df.shape[1] > 1:  # Se encontrou mais de uma coluna
+                    break
+            except:
+                continue
+        
+        # TENTATIVA 4: Se nada funcionar, tentar ler linha por linha
+        try:
+            lines = csv_text.strip().split('\n')
+            # Encontrar o cabeçalho
+            for i, line in enumerate(lines):
+                if ';' in line and ('Instituição' in line or 'Índice' in line):
+                    header_line = i
+                    break
+            else:
+                header_line = 0
+            
+            # Ler a partir do cabeçalho
+            df = pd.read_csv(io.StringIO('\n'.join(lines[header_line:])), sep=';', dtype=str)
+        except Exception as e2:
+            st.error(f"Não foi possível ler o arquivo CSV. Erro: {str(e2)[:200]}")
+            # Retornar DataFrame vazio
+            return pd.DataFrame()
+    
     return df
 
 # ================= FUNÇÃO PARA LIMPAR DADOS =================
@@ -81,16 +114,31 @@ def limpar_dados_csv(df):
     """
     Limpa e padroniza o DataFrame baixado do BACEN
     """
+    if df.empty:
+        return df
+    
     # Remover colunas completamente vazias
     df = df.dropna(axis=1, how='all')
     
     # Remover linhas completamente vazias
     df = df.dropna(how='all')
     
+    # Remover colunas que são apenas índices numéricos
+    colunas_para_remover = []
+    for col in df.columns:
+        if str(col).strip() in ['', 'Unnamed: 0', 'Unnamed: 0.1', 'index']:
+            colunas_para_remover.append(col)
+        elif df[col].astype(str).str.contains('^[0-9]+$').all():
+            colunas_para_remover.append(col)
+    
+    df = df.drop(columns=colunas_para_remover, errors='ignore')
+    
     # Padronizar nomes de colunas
     colunas_mapeamento = {
         'Instituição financeira': 'Instituição',
         'Administradora de consórcio': 'Instituição',
+        'Instituição Financeira': 'Instituição',
+        'Administradora de Consórcio': 'Instituição',
         'Índice': 'Índice',
         'Quantidade de reclamações reguladas procedentes': 'Reguladas Procedentes',
         'Quantidade de reclamações reguladas - outras': 'Reguladas Outras',
@@ -99,7 +147,11 @@ def limpar_dados_csv(df):
     }
     
     # Renomear colunas existentes
-    df = df.rename(columns={col: colunas_mapeamento[col] for col in df.columns if col in colunas_mapeamento})
+    df = df.rename(columns={col: colunas_mapeamento.get(col, col) for col in df.columns})
+    
+    # Garantir que todas as colunas sejam strings
+    for col in df.columns:
+        df[col] = df[col].astype(str)
     
     return df
 
@@ -108,26 +160,49 @@ def formatar_numero_brasileiro(valor):
     """
     Formata números no padrão brasileiro: 1.234,56
     """
-    if pd.isna(valor):
+    if pd.isna(valor) or str(valor).strip() in ['', 'nan', 'None', 'NaN']:
         return ""
     
     try:
         # Se já for string formatada, retorna como está
         if isinstance(valor, str):
-            # Verifica se já está no formato brasileiro
-            if ',' in valor and '.' in valor:
-                return valor
-            # Se for string numérica, converte
-            try:
-                num = float(valor.replace('.', '').replace(',', '.'))
-            except:
-                num = float(valor)
+            valor_str = str(valor).strip()
+            # Verifica se já está no formato brasileiro (tem vírgula como decimal)
+            if ',' in valor_str and valor_str.replace(',', '').replace('.', '').replace('-', '').isdigit():
+                # Garantir que está formatado corretamente
+                try:
+                    # Remover pontos de milhar existentes
+                    if '.' in valor_str and ',' in valor_str:
+                        # Verificar qual é o separador decimal
+                        if valor_str.rfind('.') > valor_str.rfind(','):
+                            # Ponto é o separador decimal, vírgula é milhar
+                            num = float(valor_str.replace(',', '').replace('.', '').replace(',', '.'))
+                        else:
+                            # Vírgula é o separador decimal
+                            num = float(valor_str.replace('.', '').replace(',', '.'))
+                    elif ',' in valor_str:
+                        # Apenas vírgula, provavelmente é decimal
+                        num = float(valor_str.replace('.', '').replace(',', '.'))
+                    else:
+                        # Apenas número
+                        num = float(valor_str)
+                except:
+                    num = float(valor_str.replace('.', '').replace(',', '.'))
+            else:
+                # Tentar converter para número
+                try:
+                    num = float(valor_str.replace('.', '').replace(',', '.'))
+                except:
+                    return valor_str
         else:
             num = float(valor)
         
         # Formata com separador de milhar e 2 casas decimais
-        return f"{num:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except:
+        if num >= 1000:
+            return f"{num:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        else:
+            return f"{num:.2f}".replace(".", ",")
+    except Exception as e:
         return str(valor)
 
 # ================= SIDEBAR =================
@@ -207,39 +282,85 @@ with st.sidebar:
 
 # ================= DOWNLOAD E LEITURA CSV =================
 csv_url = gerar_link_csv(ano, periodicidade, periodo, tipo)
-df_csv = baixar_csv(csv_url)
 
-if df_csv.empty:
-    st.warning("O ranking para este período ainda não possui dados.")
+try:
+    df_csv = baixar_csv(csv_url)
+except Exception as e:
+    st.error(f"Erro ao baixar o CSV: {str(e)[:200]}")
+    st.info(f"URL do CSV: {csv_url}")
+    st.stop()
+
+if df_csv.empty or df_csv.shape[0] == 0 or df_csv.shape[1] == 0:
+    st.warning("O ranking para este período ainda não possui dados ou o formato do arquivo é incompatível.")
+    st.info(f"Tente selecionar um período diferente. URL do CSV: {csv_url}")
     st.stop()
 
 # ================= LIMPAR DADOS =================
 df_csv = limpar_dados_csv(df_csv)
 
+if df_csv.empty:
+    st.warning("Não foi possível processar os dados do CSV.")
+    st.stop()
+
 # Identificar qual coluna contém o nome da instituição
 coluna_instituicao = None
-for col in ['Instituição', 'Instituição financeira', 'Administradora de consórcio']:
+possiveis_colunas = ['Instituição', 'Instituição financeira', 'Administradora de consórcio', 
+                     'Instituição Financeira', 'Administradora de Consórcio']
+
+for col in possiveis_colunas:
     if col in df_csv.columns:
         coluna_instituicao = col
         break
 
+# Se não encontrou, usar a primeira coluna que parece ser de instituição
 if not coluna_instituicao:
-    st.error("Estrutura inesperada do CSV retornado pelo BACEN.")
-    st.stop()
+    for col in df_csv.columns:
+        if any(termo in str(col).lower() for termo in ['instituição', 'administradora', 'banco', 'financeira']):
+            coluna_instituicao = col
+            break
+    else:
+        # Usar a primeira coluna como fallback
+        coluna_instituicao = df_csv.columns[0]
 
 # ================= CONVERTER ÍNDICE PARA NÚMERO (PARA ORDENAÇÃO) =================
 if 'Índice' in df_csv.columns:
     # Criar cópia para exibição com formatação brasileira
     df_csv_display = df_csv.copy()
     
-    # Converter para numérico para ordenação (removendo pontos de milhar e convertendo vírgula para ponto decimal)
-    df_csv['Índice_num'] = pd.to_numeric(
-        df_csv['Índice']
-        .astype(str)
-        .str.replace(r'\.', '', regex=True)  # Remove pontos (separadores de milhar)
-        .str.replace(',', '.', regex=False),  # Substitui vírgula por ponto (decimal)
-        errors='coerce'
-    )
+    # Converter para numérico para ordenação
+    def converter_para_numerico(valor):
+        if pd.isna(valor) or str(valor).strip() in ['', 'nan', 'None', 'NaN']:
+            return 0
+        try:
+            valor_str = str(valor).strip()
+            # Remover caracteres não numéricos exceto ponto, vírgula e hífen
+            valor_limpo = ''.join(c for c in valor_str if c.isdigit() or c in '.,-')
+            
+            if ',' in valor_limpo and '.' in valor_limpo:
+                # Tem ambos, decidir qual é o separador decimal
+                if valor_limpo.rfind('.') > valor_limpo.rfind(','):
+                    # Ponto é decimal
+                    return float(valor_limpo.replace(',', ''))
+                else:
+                    # Vírgula é decimal
+                    return float(valor_limpo.replace('.', '').replace(',', '.'))
+            elif ',' in valor_limpo:
+                # Apenas vírgula, assumir que é decimal
+                return float(valor_limpo.replace('.', '').replace(',', '.'))
+            elif '.' in valor_limpo:
+                # Apenas ponto
+                if valor_limpo.count('.') > 1:
+                    # Múltiplos pontos, provavelmente separador de milhar
+                    return float(valor_limpo.replace('.', ''))
+                else:
+                    # Apenas um ponto, pode ser decimal
+                    return float(valor_limpo)
+            else:
+                return float(valor_limpo)
+        except:
+            return 0
+    
+    df_csv['Índice_num'] = df_csv['Índice'].apply(converter_para_numerico)
     
     # Manter a formatação original para exibição
     df_csv_display['Índice_formatado'] = df_csv['Índice'].apply(formatar_numero_brasileiro)
@@ -247,7 +368,7 @@ else:
     df_csv_display = df_csv.copy()
 
 # ================= HEADER =================
-st.header("BACEN: Empresa x Quantidade de Reclamações")
+st.header("📊 BACEN: Análise de Reclamações")
 
 # Listar empresas disponíveis
 empresas_disponiveis = sorted(df_csv[coluna_instituicao].dropna().unique())
@@ -262,93 +383,59 @@ empresa = st.selectbox(
 )
 
 # Encontrar dados da empresa
-if 'Índice_num' in df_csv.columns:
-    idx = df_csv[df_csv[coluna_instituicao] == empresa].index[0]
-    dados_empresa = df_csv_display.iloc[idx]
-else:
-    dados_empresa = df_csv[df_csv[coluna_instituicao] == empresa].iloc[0]
+try:
+    if 'Índice_num' in df_csv.columns:
+        empresa_data = df_csv[df_csv[coluna_instituicao] == empresa]
+        if not empresa_data.empty:
+            idx = empresa_data.index[0]
+            dados_empresa = df_csv_display.iloc[idx]
+        else:
+            st.warning(f"Empresa {empresa} não encontrada nos dados.")
+            st.stop()
+    else:
+        dados_empresa = df_csv[df_csv[coluna_instituicao] == empresa].iloc[0]
+except Exception as e:
+    st.error(f"Erro ao buscar dados da empresa: {str(e)}")
+    st.stop()
 
 # ================= EXIBIR DADOS DA EMPRESA =================
 col1, col2, col3 = st.columns(3)
 
 with col1:
     if 'Índice_formatado' in dados_empresa:
-        st.metric("Índice", dados_empresa['Índice_formatado'])
+        valor_indice = dados_empresa['Índice_formatado']
     elif 'Índice' in dados_empresa:
-        st.metric("Índice", formatar_numero_brasileiro(dados_empresa['Índice']))
+        valor_indice = formatar_numero_brasileiro(dados_empresa['Índice'])
+    else:
+        valor_indice = "N/A"
+    
+    st.metric("Índice", valor_indice)
 
 # Verificar se as colunas existem antes de acessá-las
-if 'Reguladas Procedentes' in df_csv.columns:
-    with col2:
-        st.metric("Reguladas Procedentes", int(dados_empresa.get('Reguladas Procedentes', 0)))
-    
-    with col3:
-        st.metric("Não Reguladas", int(dados_empresa.get('Não Reguladas', 0)))
+quantidades_cols = ['Reguladas Procedentes', 'Reguladas Outras', 'Não Reguladas']
 
-# ================= GRÁFICO (se houver dados) =================
-colunas_grafico = []
-if 'Reguladas Procedentes' in df_csv.columns:
-    colunas_grafico.append('Reguladas Procedentes')
-if 'Reguladas Outras' in df_csv.columns:
-    colunas_grafico.append('Reguladas Outras')
-if 'Não Reguladas' in df_csv.columns:
-    colunas_grafico.append('Não Reguladas')
-
-if colunas_grafico and empresa:
-    # Converter valores para numérico para o gráfico
-    dados_para_grafico = {}
-    for col in colunas_grafico:
-        if col in dados_empresa:
-            try:
-                # Tentar converter para número
-                valor = pd.to_numeric(str(dados_empresa[col]).replace('.', '').replace(',', '.'), errors='coerce')
-                dados_para_grafico[col] = valor if not pd.isna(valor) else 0
-            except:
-                dados_para_grafico[col] = 0
-    
-    if dados_para_grafico and sum(dados_para_grafico.values()) > 0:
-        df_grafico = pd.DataFrame(list(dados_para_grafico.items()), columns=['Tipo de Reclamação', 'Quantidade'])
-        
-        # Mapear nomes amigáveis
-        mapeamento_nomes = {
-            'Reguladas Procedentes': 'Reguladas Procedentes',
-            'Reguladas Outras': 'Reguladas Outras',
-            'Não Reguladas': 'Não Reguladas'
-        }
-        df_grafico["Tipo de Reclamação"] = df_grafico["Tipo de Reclamação"].map(mapeamento_nomes)
-        
-        grafico = alt.Chart(df_grafico).mark_bar().encode(
-            x=alt.X("Tipo de Reclamação:N", axis=alt.Axis(labelAngle=-30), sort=None),
-            y=alt.Y("Quantidade:Q", title="Quantidade"),
-            color=alt.Color(
-                "Tipo de Reclamação:N",
-                scale=alt.Scale(range=["#00aca8", "#1d2262", "#d4096a"]),
-                legend=alt.Legend(title="Tipo de Reclamação")
-            ),
-            tooltip=['Tipo de Reclamação', 'Quantidade']
-        ).properties(
-            height=400,
-            title=f"Reclamações - {empresa}"
-        )
-        
-        # Adicionar texto com os valores
-        texto = grafico.mark_text(
-            align='center',
-            baseline='bottom',
-            dy=-5,
-            fontSize=12,
-            fontWeight='bold',
-            color='white'
-        ).encode(
-            text=alt.Text('Quantidade:Q', format=',.0f')
-        )
-        
-        st.altair_chart(grafico + texto, use_container_width=True)
+with col2:
+    if 'Reguladas Procedentes' in dados_empresa:
+        try:
+            valor = int(float(str(dados_empresa['Reguladas Procedentes']).replace('.', '').replace(',', '.')))
+            st.metric("Reguladas Procedentes", f"{valor:,}".replace(",", "."))
+        except:
+            st.metric("Reguladas Procedentes", dados_empresa.get('Reguladas Procedentes', 0))
     else:
-        st.info(f"Não há dados de reclamações disponíveis para {empresa}")
+        st.metric("Reguladas Procedentes", "N/A")
 
-# ================= RANKING =================
-st.markdown("## 📊 Ranking de Reclamações")
+with col3:
+    if 'Não Reguladas' in dados_empresa:
+        try:
+            valor = int(float(str(dados_empresa['Não Reguladas']).replace('.', '').replace(',', '.')))
+            st.metric("Não Reguladas", f"{valor:,}".replace(",", "."))
+        except:
+            st.metric("Não Reguladas", dados_empresa.get('Não Reguladas', 0))
+    else:
+        st.metric("Não Reguladas", "N/A")
+
+# ================= RANKING - TABELA PRINCIPAL =================
+st.markdown("## 🏆 Ranking de Reclamações")
 
 # Garantir que temos a coluna de índice para ordenar
 if 'Índice_num' in df_csv.columns:
@@ -362,27 +449,26 @@ if 'Índice_num' in df_csv.columns:
     df_ranking.insert(0, "Rank", [f"{i+1}º" for i in df_ranking.index])
     
     # Formatar índice no padrão brasileiro
-    df_ranking["Índice"] = df_ranking["Índice"].apply(formatar_numero_brasileiro)
+    if 'Índice' in df_ranking.columns:
+        df_ranking["Índice"] = df_ranking["Índice"].apply(formatar_numero_brasileiro)
+    elif 'Índice_num' in df_ranking.columns:
+        df_ranking["Índice"] = df_ranking["Índice_num"].apply(formatar_numero_brasileiro)
     
-    # Selecionar colunas para exibir
+    # Selecionar colunas para exibir - APENAS AS 3 COLUNAS SOLICITADAS
     colunas_exibir = ["Rank", coluna_instituicao, "Índice"]
-    
-    # Adicionar colunas de quantidade se existirem
-    for col in ['Reguladas Procedentes', 'Reguladas Outras', 'Não Reguladas', 'Total Reclamações']:
-        if col in df_ranking.columns:
-            colunas_exibir.append(col)
     
     # Manter apenas as colunas que existem
     colunas_exibir = [col for col in colunas_exibir if col in df_ranking.columns]
     
     # Exibir apenas top 30
-    ranking_exibir = df_ranking[colunas_exibir].head(30)
+    ranking_exibir = df_ranking[colunas_exibir].head(30).reset_index(drop=True)
     
-    # Estilizar a tabela
+    # Estilizar a tabela SEM MOSTRAR O ÍNDICE DO DATAFRAME
     st.dataframe(
         ranking_exibir,
         use_container_width=True,
         height=800,
+        hide_index=True,  # <--- ISSO OCULTA O ÍNDICE
         column_config={
             coluna_instituicao: st.column_config.Column(
                 "Instituição",
@@ -391,47 +477,79 @@ if 'Índice_num' in df_csv.columns:
             "Índice": st.column_config.TextColumn(
                 "Índice",
                 help="Índice de reclamações (formato brasileiro: ponto separador de milhar, vírgula decimal)"
+            ),
+            "Rank": st.column_config.Column(
+                "Posição",
+                width="small"
             )
         }
     )
     
     # Botão para download
-    csv = ranking_exibir.to_csv(index=False, sep=';', decimal=',')
-    st.download_button(
-        label="📥 Baixar Ranking (CSV)",
-        data=csv,
-        file_name=f"ranking_bacen_{ano}_{periodo}.csv",
-        mime="text/csv"
-    )
+    try:
+        csv = ranking_exibir.to_csv(index=False, sep=';', decimal=',')
+        st.download_button(
+            label="📥 Baixar Ranking (CSV)",
+            data=csv,
+            file_name=f"ranking_bacen_{ano}_{periodo}.csv",
+            mime="text/csv"
+        )
+    except Exception as e:
+        st.warning(f"Não foi possível gerar o arquivo CSV para download: {str(e)[:100]}")
+    
 elif 'Índice' in df_csv.columns:
     # Se não tiver a coluna numérica, usar a original
     df_ranking = df_csv.copy()
     
     # Tentar ordenar convertendo na hora
-    df_ranking['Índice_num_temp'] = pd.to_numeric(
-        df_ranking['Índice']
-        .astype(str)
-        .str.replace(r'\.', '', regex=True)
-        .str.replace(',', '.', regex=False),
-        errors='coerce'
-    )
-    
-    df_ranking = df_ranking.sort_values("Índice_num_temp", ascending=False).reset_index(drop=True)
-    df_ranking = df_ranking.drop(columns=['Índice_num_temp'])
+    try:
+        df_ranking['Índice_num_temp'] = df_ranking['Índice'].apply(converter_para_numerico)
+        df_ranking = df_ranking.sort_values("Índice_num_temp", ascending=False).reset_index(drop=True)
+        df_ranking = df_ranking.drop(columns=['Índice_num_temp'], errors='ignore')
+    except:
+        # Se não conseguir ordenar numericamente, manter ordem original
+        pass
     
     # Adicionar coluna de ranking
     df_ranking.insert(0, "Rank", [f"{i+1}º" for i in df_ranking.index])
     
     # Formatar os números
-    df_ranking["Índice"] = df_ranking["Índice"].apply(formatar_numero_brasileiro)
+    if 'Índice' in df_ranking.columns:
+        df_ranking["Índice"] = df_ranking["Índice"].apply(formatar_numero_brasileiro)
     
-    # Resto do código igual...
+    # Selecionar colunas para exibir
+    colunas_exibir = ["Rank", coluna_instituicao, "Índice"]
+    colunas_exibir = [col for col in colunas_exibir if col in df_ranking.columns]
+    
+    # Exibir apenas top 30
+    ranking_exibir = df_ranking[colunas_exibir].head(30).reset_index(drop=True)
+    
+    # Estilizar a tabela SEM MOSTRAR O ÍNDICE
+    st.dataframe(
+        ranking_exibir,
+        use_container_width=True,
+        height=800,
+        hide_index=True,  # <--- ISSO OCULTA O ÍNDICE
+        column_config={
+            coluna_instituicao: st.column_config.Column(
+                "Instituição",
+                width="large"
+            ),
+            "Índice": st.column_config.TextColumn(
+                "Índice",
+                help="Índice de reclamações"
+            )
+        }
+    )
 else:
     st.warning("Não foi possível gerar o ranking - coluna 'Índice' não encontrada.")
+    # Mostrar dados brutos para debug
+    with st.expander("Ver dados brutos (para debug)"):
+        st.write(df_csv.head())
 
 # ================= INFORMAÇÕES ADICIONAIS =================
 with st.expander("ℹ️ Informações sobre os dados"):
-    st.markdown("""
+    st.markdown(f"""
     ### Sobre os dados:
     - **Índice**: Medida calculada pelo BACEN que considera o volume de reclamações em relação ao tamanho da instituição. 
       Formato brasileiro: **5.151,45** (ponto separador de milhar, vírgula separador decimal)
@@ -442,5 +560,13 @@ with st.expander("ℹ️ Informações sobre os dados"):
     ### Fonte:
     Dados obtidos diretamente do Banco Central do Brasil (BACEN)
     
-    ### Período:
-    """ + f"{periodicidade} - {periodo}/{ano}")
+    ### Período selecionado:
+    - **Tipo**: {tipo}
+    - **Ano**: {ano}
+    - **Periodicidade**: {periodicidade}
+    - **Período**: {periodo}
+    
+    ### Estrutura dos dados:
+    - Total de instituições: {len(df_csv)}
+    - Colunas disponíveis: {', '.join(df_csv.columns.tolist())}
+    """)
