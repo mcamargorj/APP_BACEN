@@ -15,11 +15,17 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ================= FUNÇÕES =================
+# ================= FUNÇÕES AUXILIARES =================
+def safe_index(lista):
+    return len(lista) - 1 if lista else 0
+
+
 @st.cache_data
 def load_data():
     url = "https://www3.bcb.gov.br/rdrweb/rest/ext/ranking"
-    response = requests.get(url)
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
+
     data = response.json()
 
     df = pd.json_normalize(
@@ -44,10 +50,32 @@ def gerar_link_csv(ano, periodicidade, periodo, tipo):
 def cantos_arredondados(image, radius):
     mask = Image.new("L", image.size, 0)
     draw = ImageDraw.Draw(mask)
-    draw.rounded_rectangle((0, 0, image.width, image.height), radius, fill=255)
+    draw.rounded_rectangle(
+        (0, 0, image.width, image.height),
+        radius,
+        fill=255
+    )
     result = ImageOps.fit(image, mask.size, centering=(0.5, 0.5))
     result.putalpha(mask)
     return result
+
+
+@st.cache_data
+def baixar_csv(url):
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
+
+    encoding = chardet.detect(response.content)['encoding']
+    csv_text = response.content.decode(encoding or "latin1", errors="ignore")
+
+    try:
+        delimiter = Sniffer().sniff(csv_text[:1000]).delimiter
+    except Exception:
+        delimiter = ";"
+
+    df = pd.read_csv(io.StringIO(csv_text), sep=delimiter)
+    return df
+
 
 # ================= SIDEBAR =================
 with st.sidebar:
@@ -56,10 +84,10 @@ with st.sidebar:
     logo = Image.open("logo.png").convert("RGBA")
     st.image(cantos_arredondados(logo, 20), use_column_width=True)
 
-    df = load_data()
+    df_base = load_data()
 
     # ---- Tipo
-    tipos = sorted(df['tipo'].unique().tolist())
+    tipos = sorted(df_base['tipo'].dropna().unique().tolist())
     if not tipos:
         st.error("Nenhum tipo disponível.")
         st.stop()
@@ -67,58 +95,69 @@ with st.sidebar:
     tipo = st.selectbox("Selecione o tipo:", tipos)
 
     # ---- Ano
-    anos = sorted(df[df['tipo'] == tipo]['ano'].unique().tolist())
+    anos = sorted(
+        df_base[df_base['tipo'] == tipo]['ano']
+        .dropna()
+        .unique()
+        .tolist()
+    )
     if not anos:
         st.error("Nenhum ano disponível.")
         st.stop()
 
-    ano = st.selectbox("Selecione o ano:", anos, index=len(anos) - 1)
+    ano = st.selectbox("Selecione o ano:", anos, index=safe_index(anos))
 
     # ---- Periodicidade
-    periodicidades = df[
-        (df['tipo'] == tipo) &
-        (df['ano'] == ano)
-    ]['periodicidade'].unique().tolist()
+    periodicidades = (
+        df_base[
+            (df_base['tipo'] == tipo) &
+            (df_base['ano'] == ano)
+        ]['periodicidade']
+        .dropna()
+        .unique()
+        .tolist()
+    )
 
     if not periodicidades:
         st.error("Nenhuma periodicidade disponível.")
         st.stop()
 
-    periodicidade = st.selectbox("Selecione a periodicidade:", periodicidades)
+    periodicidade = st.selectbox(
+        "Selecione a periodicidade:",
+        periodicidades
+    )
 
     # ---- Período
-    periodos = df[
-        (df['tipo'] == tipo) &
-        (df['ano'] == ano) &
-        (df['periodicidade'] == periodicidade)
-    ]['periodo'].unique().tolist()
+    periodos = (
+        df_base[
+            (df_base['tipo'] == tipo) &
+            (df_base['ano'] == ano) &
+            (df_base['periodicidade'] == periodicidade)
+        ]['periodo']
+        .dropna()
+        .unique()
+        .tolist()
+    )
 
     if not periodos:
         st.warning("Não há períodos disponíveis para este filtro.")
         st.stop()
 
-    periodo = st.selectbox("Selecione o período:", periodos, index=len(periodos) - 1)
+    periodo = st.selectbox(
+        "Selecione o período:",
+        periodos,
+        index=safe_index(periodos)
+    )
 
-# ================= DOWNLOAD CSV =================
+# ================= DOWNLOAD E LEITURA CSV =================
 csv_url = gerar_link_csv(ano, periodicidade, periodo, tipo)
-response = requests.get(csv_url)
-response.raise_for_status()
-
-encoding = chardet.detect(response.content)['encoding']
-csv_text = response.content.decode(encoding, errors="ignore")
-
-try:
-    delimiter = Sniffer().sniff(csv_text[:1000]).delimiter
-    df_csv = pd.read_csv(io.StringIO(csv_text), sep=delimiter)
-except Exception:
-    st.error("Erro ao interpretar o CSV retornado pelo BACEN.")
-    st.stop()
+df_csv = baixar_csv(csv_url)
 
 if df_csv.empty:
     st.warning("O ranking para este período ainda não possui dados.")
     st.stop()
 
-# ================= COLUNAS =================
+# ================= IDENTIFICAÇÃO DE COLUNAS =================
 colunas_possiveis = {
     'Instituição financeira': [
         'Instituição financeira', 'Índice',
@@ -137,22 +176,31 @@ colunas_possiveis = {
 }
 
 coluna_empresa = None
-for k, cols in colunas_possiveis.items():
-    if k in df_csv.columns:
-        coluna_empresa = k
+for col, cols in colunas_possiveis.items():
+    if col in df_csv.columns:
+        coluna_empresa = col
         df_csv = df_csv[cols]
         break
 
 if not coluna_empresa:
-    st.error("Estrutura inesperada do CSV.")
+    st.error("Estrutura inesperada do CSV retornado pelo BACEN.")
     st.stop()
 
+# ================= NORMALIZAÇÃO DO ÍNDICE =================
+df_csv["Índice"] = pd.to_numeric(
+    df_csv["Índice"]
+        .astype(str)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False),
+    errors="coerce"
+)
+
 # ================= HEADER =================
-st.header("BACEN: Empresa x Quantidade de Reclamações por Tipo")
+st.header("BACEN: Empresa x Quantidade de Reclamações")
 
 empresa = st.selectbox(
     "Selecione a Empresa:",
-    sorted(df_csv[coluna_empresa].unique())
+    sorted(df_csv[coluna_empresa].dropna().unique())
 )
 
 dados_empresa = df_csv[df_csv[coluna_empresa] == empresa]
@@ -188,18 +236,12 @@ texto = grafico.mark_text(dy=-5).encode(text="Quantidade:Q")
 
 st.altair_chart(grafico + texto)
 
-# ================= TABELA =================
+# ================= RANKING =================
 st.markdown("## Ranking de Reclamações")
-
-df_csv["Índice"] = (
-    df_csv["Índice"]
-    .str.replace(".", "", regex=False)
-    .str.replace(",", ".", regex=False)
-    .astype(float)
-)
 
 ranking = (
     df_csv
+    .dropna(subset=["Índice"])
     .sort_values("Índice", ascending=False)
     .head(30)
     .reset_index(drop=True)
