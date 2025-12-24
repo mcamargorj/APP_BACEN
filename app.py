@@ -76,13 +76,52 @@ def baixar_csv(url):
     df = pd.read_csv(io.StringIO(csv_text), sep=delimiter)
     return df
 
+# ================= FUNÇÃO PARA LIMPAR DADOS =================
+def limpar_dados_csv(df):
+    """
+    Limpa e padroniza o DataFrame baixado do BACEN
+    """
+    # Remover colunas completamente vazias
+    df = df.dropna(axis=1, how='all')
+    
+    # Remover linhas completamente vazias
+    df = df.dropna(how='all')
+    
+    # Padronizar nomes de colunas
+    colunas_mapeamento = {
+        'Instituição financeira': 'Instituição',
+        'Administradora de consórcio': 'Instituição',
+        'Índice': 'Índice',
+        'Quantidade de reclamações reguladas procedentes': 'Reguladas Procedentes',
+        'Quantidade de reclamações reguladas - outras': 'Reguladas Outras',
+        'Quantidade de reclamações não reguladas': 'Não Reguladas',
+        'Quantidade total de reclamações': 'Total Reclamações'
+    }
+    
+    # Renomear colunas existentes
+    df = df.rename(columns={col: colunas_mapeamento[col] for col in df.columns if col in colunas_mapeamento})
+    
+    # Converter índice para numérico
+    if 'Índice' in df.columns:
+        df["Índice"] = pd.to_numeric(
+            df["Índice"]
+                .astype(str)
+                .str.replace(".", "", regex=False)
+                .str.replace(",", ".", regex=False),
+            errors="coerce"
+        )
+    
+    return df
 
 # ================= SIDEBAR =================
 with st.sidebar:
     st.subheader("BASES DE RECLAMAÇÕES DO BACEN")
 
-    logo = Image.open("logo.png").convert("RGBA")
-    st.image(cantos_arredondados(logo, 20), use_column_width=True)
+    try:
+        logo = Image.open("logo.png").convert("RGBA")
+        st.image(cantos_arredondados(logo, 20), use_column_width=True)
+    except:
+        st.info("Logo não encontrado")
 
     df_base = load_data()
 
@@ -157,104 +196,175 @@ if df_csv.empty:
     st.warning("O ranking para este período ainda não possui dados.")
     st.stop()
 
-# ================= IDENTIFICAÇÃO DE COLUNAS =================
-colunas_possiveis = {
-    'Instituição financeira': [
-        'Instituição financeira', 'Índice',
-        'Quantidade de reclamações reguladas procedentes',
-        'Quantidade de reclamações reguladas - outras',
-        'Quantidade de reclamações não reguladas',
-        'Quantidade total de reclamações'
-    ],
-    'Administradora de consórcio': [
-        'Administradora de consórcio', 'Índice',
-        'Quantidade de reclamações reguladas procedentes',
-        'Quantidade de reclamações reguladas - outras',
-        'Quantidade de reclamações não reguladas',
-        'Quantidade total de reclamações'
-    ]
-}
+# ================= LIMPAR DADOS =================
+df_csv = limpar_dados_csv(df_csv)
 
-coluna_empresa = None
-for col, cols in colunas_possiveis.items():
+# Identificar qual coluna contém o nome da instituição
+coluna_instituicao = None
+for col in ['Instituição', 'Instituição financeira', 'Administradora de consórcio']:
     if col in df_csv.columns:
-        coluna_empresa = col
-        df_csv = df_csv[cols]
+        coluna_instituicao = col
         break
 
-if not coluna_empresa:
+if not coluna_instituicao:
     st.error("Estrutura inesperada do CSV retornado pelo BACEN.")
     st.stop()
-
-# ================= NORMALIZAÇÃO DO ÍNDICE =================
-df_csv["Índice"] = pd.to_numeric(
-    df_csv["Índice"]
-        .astype(str)
-        .str.replace(".", "", regex=False)
-        .str.replace(",", ".", regex=False),
-    errors="coerce"
-)
 
 # ================= HEADER =================
 st.header("BACEN: Empresa x Quantidade de Reclamações")
 
+# Listar empresas disponíveis
+empresas_disponiveis = sorted(df_csv[coluna_instituicao].dropna().unique())
+
+if not empresas_disponiveis:
+    st.warning("Nenhuma empresa encontrada nos dados.")
+    st.stop()
+
 empresa = st.selectbox(
     "Selecione a Empresa:",
-    sorted(df_csv[coluna_empresa].dropna().unique())
+    empresas_disponiveis
 )
 
-dados_empresa = df_csv[df_csv[coluna_empresa] == empresa]
+dados_empresa = df_csv[df_csv[coluna_instituicao] == empresa].iloc[0]
 
-# ================= GRÁFICO =================
-dados_grafico = dados_empresa.melt(
-    id_vars=[coluna_empresa],
-    value_vars=[
-        'Quantidade de reclamações reguladas procedentes',
-        'Quantidade de reclamações reguladas - outras',
-        'Quantidade de reclamações não reguladas'
-    ],
-    var_name="Tipo de Reclamação",
-    value_name="Quantidade"
-)
+# ================= EXIBIR DADOS DA EMPRESA =================
+col1, col2, col3 = st.columns(3)
 
-dados_grafico["Tipo de Reclamação"] = dados_grafico["Tipo de Reclamação"].replace({
-    'Quantidade de reclamações reguladas procedentes': 'Reguladas Procedentes',
-    'Quantidade de reclamações reguladas - outras': 'Reguladas Outras',
-    'Quantidade de reclamações não reguladas': 'Não Reguladas'
-})
+with col1:
+    st.metric("Índice", f"{dados_empresa.get('Índice', 0):.2f}")
 
-grafico = alt.Chart(dados_grafico).mark_bar().encode(
-    x=alt.X("Tipo de Reclamação:N", axis=alt.Axis(labelAngle=-30)),
-    y="Quantidade:Q",
-    color=alt.Color(
-        "Tipo de Reclamação:N",
-        scale=alt.Scale(range=["#00aca8", "#1d2262", "#d4096a"])
+# Verificar se as colunas existem antes de acessá-las
+if 'Reguladas Procedentes' in df_csv.columns:
+    with col2:
+        st.metric("Reguladas Procedentes", int(dados_empresa.get('Reguladas Procedentes', 0)))
+    
+    with col3:
+        st.metric("Não Reguladas", int(dados_empresa.get('Não Reguladas', 0)))
+
+# ================= GRÁFICO (se houver dados) =================
+colunas_grafico = []
+if 'Reguladas Procedentes' in df_csv.columns:
+    colunas_grafico.append('Reguladas Procedentes')
+if 'Reguladas Outras' in df_csv.columns:
+    colunas_grafico.append('Reguladas Outras')
+if 'Não Reguladas' in df_csv.columns:
+    colunas_grafico.append('Não Reguladas')
+
+if colunas_grafico and empresa:
+    dados_grafico = dados_empresa[colunas_grafico].reset_index()
+    dados_grafico = dados_grafico.melt(
+        var_name="Tipo de Reclamação",
+        value_name="Quantidade"
     )
-).properties(height=400, width=600)
-
-texto = grafico.mark_text(dy=-5).encode(text="Quantidade:Q")
-
-st.altair_chart(grafico + texto)
+    
+    if not dados_grafico.empty and dados_grafico['Quantidade'].sum() > 0:
+        # Mapear nomes amigáveis
+        mapeamento_nomes = {
+            'Reguladas Procedentes': 'Reguladas Procedentes',
+            'Reguladas Outras': 'Reguladas Outras',
+            'Não Reguladas': 'Não Reguladas'
+        }
+        dados_grafico["Tipo de Reclamação"] = dados_grafico["Tipo de Reclamação"].map(mapeamento_nomes)
+        
+        grafico = alt.Chart(dados_grafico).mark_bar().encode(
+            x=alt.X("Tipo de Reclamação:N", axis=alt.Axis(labelAngle=-30), sort=None),
+            y=alt.Y("Quantidade:Q", title="Quantidade"),
+            color=alt.Color(
+                "Tipo de Reclamação:N",
+                scale=alt.Scale(range=["#00aca8", "#1d2262", "#d4096a"]),
+                legend=alt.Legend(title="Tipo de Reclamação")
+            ),
+            tooltip=['Tipo de Reclamação', 'Quantidade']
+        ).properties(
+            height=400,
+            title=f"Reclamações - {empresa}"
+        )
+        
+        # Adicionar texto com os valores
+        texto = grafico.mark_text(
+            align='center',
+            baseline='bottom',
+            dy=-5,
+            fontSize=12,
+            fontWeight='bold',
+            color='white'
+        ).encode(
+            text=alt.Text('Quantidade:Q', format=',.0f')
+        )
+        
+        st.altair_chart(grafico + texto, use_container_width=True)
+    else:
+        st.info(f"Não há dados de reclamações disponíveis para {empresa}")
 
 # ================= RANKING =================
-st.markdown("## Ranking de Reclamações")
+st.markdown("## 📊 Ranking de Reclamações")
 
-ranking = (
-    df_csv
-    .dropna(subset=["Índice"])
-    .sort_values("Índice", ascending=False)
-    .head(30)
-    .reset_index(drop=True)
-)
+# Garantir que temos a coluna de índice para ordenar
+if 'Índice' in df_csv.columns:
+    # Remover linhas sem índice
+    df_ranking = df_csv.dropna(subset=["Índice"]).copy()
+    
+    # Ordenar por índice (decrescente)
+    df_ranking = df_ranking.sort_values("Índice", ascending=False).reset_index(drop=True)
+    
+    # Adicionar coluna de ranking
+    df_ranking.insert(0, "Rank", [f"{i+1}º" for i in df_ranking.index])
+    
+    # Formatar índice com 2 casas decimais
+    df_ranking["Índice"] = df_ranking["Índice"].apply(lambda x: f"{x:.2f}")
+    
+    # Selecionar colunas para exibir
+    colunas_exibir = ["Rank", coluna_instituicao, "Índice"]
+    
+    # Adicionar colunas de quantidade se existirem
+    for col in ['Reguladas Procedentes', 'Reguladas Outras', 'Não Reguladas', 'Total Reclamações']:
+        if col in df_ranking.columns:
+            colunas_exibir.append(col)
+    
+    # Manter apenas as colunas que existem
+    colunas_exibir = [col for col in colunas_exibir if col in df_ranking.columns]
+    
+    # Exibir apenas top 30
+    ranking_exibir = df_ranking[colunas_exibir].head(30)
+    
+    # Estilizar a tabela
+    st.dataframe(
+        ranking_exibir,
+        use_container_width=True,
+        height=800,
+        column_config={
+            coluna_instituicao: st.column_config.Column(
+                "Instituição",
+                width="large"
+            ),
+            "Índice": st.column_config.NumberColumn(
+                format="%.2f"
+            )
+        }
+    )
+    
+    # Botão para download
+    csv = ranking_exibir.to_csv(index=False, sep=';', decimal=',')
+    st.download_button(
+        label="📥 Baixar Ranking (CSV)",
+        data=csv,
+        file_name=f"ranking_bacen_{ano}_{periodo}.csv",
+        mime="text/csv"
+    )
+else:
+    st.warning("Não foi possível gerar o ranking - coluna 'Índice' não encontrada.")
 
-ranking.insert(0, "Rank", [f"{i+1}º" for i in ranking.index])
-ranking["Índice"] = ranking["Índice"].map(lambda x: f"{x:.2f}")
-
-st.dataframe(ranking, use_container_width=True)
-
-st.download_button(
-    "Baixar CSV",
-    ranking.to_csv(index=False).encode("utf-8"),
-    "ranking_bacen.csv",
-    "text/csv"
-)
+# ================= INFORMAÇÕES ADICIONAIS =================
+with st.expander("ℹ️ Informações sobre os dados"):
+    st.markdown("""
+    ### Sobre os dados:
+    - **Índice**: Medida calculada pelo BACEN que considera o volume de reclamações em relação ao tamanho da instituição
+    - **Reguladas Procedentes**: Reclamações onde o cliente tinha razão
+    - **Reguladas Outras**: Reclamações reguladas mas não procedentes
+    - **Não Reguladas**: Reclamações fora do escopo de regulação do BACEN
+    
+    ### Fonte:
+    Dados obtidos diretamente do Banco Central do Brasil (BACEN)
+    
+    ### Período:
+    """ + f"{periodicidade} - {periodo}/{ano}")
