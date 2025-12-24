@@ -101,17 +101,34 @@ def limpar_dados_csv(df):
     # Renomear colunas existentes
     df = df.rename(columns={col: colunas_mapeamento[col] for col in df.columns if col in colunas_mapeamento})
     
-    # Converter índice para numérico
-    if 'Índice' in df.columns:
-        df["Índice"] = pd.to_numeric(
-            df["Índice"]
-                .astype(str)
-                .str.replace(".", "", regex=False)
-                .str.replace(",", ".", regex=False),
-            errors="coerce"
-        )
-    
     return df
+
+# ================= FUNÇÃO PARA FORMATAR NÚMEROS NO PADRÃO BRASILEIRO =================
+def formatar_numero_brasileiro(valor):
+    """
+    Formata números no padrão brasileiro: 1.234,56
+    """
+    if pd.isna(valor):
+        return ""
+    
+    try:
+        # Se já for string formatada, retorna como está
+        if isinstance(valor, str):
+            # Verifica se já está no formato brasileiro
+            if ',' in valor and '.' in valor:
+                return valor
+            # Se for string numérica, converte
+            try:
+                num = float(valor.replace('.', '').replace(',', '.'))
+            except:
+                num = float(valor)
+        else:
+            num = float(valor)
+        
+        # Formata com separador de milhar e 2 casas decimais
+        return f"{num:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except:
+        return str(valor)
 
 # ================= SIDEBAR =================
 with st.sidebar:
@@ -210,6 +227,25 @@ if not coluna_instituicao:
     st.error("Estrutura inesperada do CSV retornado pelo BACEN.")
     st.stop()
 
+# ================= CONVERTER ÍNDICE PARA NÚMERO (PARA ORDENAÇÃO) =================
+if 'Índice' in df_csv.columns:
+    # Criar cópia para exibição com formatação brasileira
+    df_csv_display = df_csv.copy()
+    
+    # Converter para numérico para ordenação (removendo pontos de milhar e convertendo vírgula para ponto decimal)
+    df_csv['Índice_num'] = pd.to_numeric(
+        df_csv['Índice']
+        .astype(str)
+        .str.replace(r'\.', '', regex=True)  # Remove pontos (separadores de milhar)
+        .str.replace(',', '.', regex=False),  # Substitui vírgula por ponto (decimal)
+        errors='coerce'
+    )
+    
+    # Manter a formatação original para exibição
+    df_csv_display['Índice_formatado'] = df_csv['Índice'].apply(formatar_numero_brasileiro)
+else:
+    df_csv_display = df_csv.copy()
+
 # ================= HEADER =================
 st.header("BACEN: Empresa x Quantidade de Reclamações")
 
@@ -225,13 +261,21 @@ empresa = st.selectbox(
     empresas_disponiveis
 )
 
-dados_empresa = df_csv[df_csv[coluna_instituicao] == empresa].iloc[0]
+# Encontrar dados da empresa
+if 'Índice_num' in df_csv.columns:
+    idx = df_csv[df_csv[coluna_instituicao] == empresa].index[0]
+    dados_empresa = df_csv_display.iloc[idx]
+else:
+    dados_empresa = df_csv[df_csv[coluna_instituicao] == empresa].iloc[0]
 
 # ================= EXIBIR DADOS DA EMPRESA =================
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric("Índice", f"{dados_empresa.get('Índice', 0):.2f}")
+    if 'Índice_formatado' in dados_empresa:
+        st.metric("Índice", dados_empresa['Índice_formatado'])
+    elif 'Índice' in dados_empresa:
+        st.metric("Índice", formatar_numero_brasileiro(dados_empresa['Índice']))
 
 # Verificar se as colunas existem antes de acessá-las
 if 'Reguladas Procedentes' in df_csv.columns:
@@ -251,22 +295,29 @@ if 'Não Reguladas' in df_csv.columns:
     colunas_grafico.append('Não Reguladas')
 
 if colunas_grafico and empresa:
-    dados_grafico = dados_empresa[colunas_grafico].reset_index()
-    dados_grafico = dados_grafico.melt(
-        var_name="Tipo de Reclamação",
-        value_name="Quantidade"
-    )
+    # Converter valores para numérico para o gráfico
+    dados_para_grafico = {}
+    for col in colunas_grafico:
+        if col in dados_empresa:
+            try:
+                # Tentar converter para número
+                valor = pd.to_numeric(str(dados_empresa[col]).replace('.', '').replace(',', '.'), errors='coerce')
+                dados_para_grafico[col] = valor if not pd.isna(valor) else 0
+            except:
+                dados_para_grafico[col] = 0
     
-    if not dados_grafico.empty and dados_grafico['Quantidade'].sum() > 0:
+    if dados_para_grafico and sum(dados_para_grafico.values()) > 0:
+        df_grafico = pd.DataFrame(list(dados_para_grafico.items()), columns=['Tipo de Reclamação', 'Quantidade'])
+        
         # Mapear nomes amigáveis
         mapeamento_nomes = {
             'Reguladas Procedentes': 'Reguladas Procedentes',
             'Reguladas Outras': 'Reguladas Outras',
             'Não Reguladas': 'Não Reguladas'
         }
-        dados_grafico["Tipo de Reclamação"] = dados_grafico["Tipo de Reclamação"].map(mapeamento_nomes)
+        df_grafico["Tipo de Reclamação"] = df_grafico["Tipo de Reclamação"].map(mapeamento_nomes)
         
-        grafico = alt.Chart(dados_grafico).mark_bar().encode(
+        grafico = alt.Chart(df_grafico).mark_bar().encode(
             x=alt.X("Tipo de Reclamação:N", axis=alt.Axis(labelAngle=-30), sort=None),
             y=alt.Y("Quantidade:Q", title="Quantidade"),
             color=alt.Color(
@@ -300,18 +351,18 @@ if colunas_grafico and empresa:
 st.markdown("## 📊 Ranking de Reclamações")
 
 # Garantir que temos a coluna de índice para ordenar
-if 'Índice' in df_csv.columns:
-    # Remover linhas sem índice
-    df_ranking = df_csv.dropna(subset=["Índice"]).copy()
+if 'Índice_num' in df_csv.columns:
+    # Criar DataFrame para ranking
+    df_ranking = df_csv.copy()
     
-    # Ordenar por índice (decrescente)
-    df_ranking = df_ranking.sort_values("Índice", ascending=False).reset_index(drop=True)
+    # Ordenar por índice numérico (decrescente)
+    df_ranking = df_ranking.sort_values("Índice_num", ascending=False).reset_index(drop=True)
     
     # Adicionar coluna de ranking
     df_ranking.insert(0, "Rank", [f"{i+1}º" for i in df_ranking.index])
     
-    # Formatar índice com 2 casas decimais
-    df_ranking["Índice"] = df_ranking["Índice"].apply(lambda x: f"{x:.2f}")
+    # Formatar índice no padrão brasileiro
+    df_ranking["Índice"] = df_ranking["Índice"].apply(formatar_numero_brasileiro)
     
     # Selecionar colunas para exibir
     colunas_exibir = ["Rank", coluna_instituicao, "Índice"]
@@ -337,8 +388,9 @@ if 'Índice' in df_csv.columns:
                 "Instituição",
                 width="large"
             ),
-            "Índice": st.column_config.NumberColumn(
-                format="%.2f"
+            "Índice": st.column_config.TextColumn(
+                "Índice",
+                help="Índice de reclamações (formato brasileiro: ponto separador de milhar, vírgula decimal)"
             )
         }
     )
@@ -351,6 +403,29 @@ if 'Índice' in df_csv.columns:
         file_name=f"ranking_bacen_{ano}_{periodo}.csv",
         mime="text/csv"
     )
+elif 'Índice' in df_csv.columns:
+    # Se não tiver a coluna numérica, usar a original
+    df_ranking = df_csv.copy()
+    
+    # Tentar ordenar convertendo na hora
+    df_ranking['Índice_num_temp'] = pd.to_numeric(
+        df_ranking['Índice']
+        .astype(str)
+        .str.replace(r'\.', '', regex=True)
+        .str.replace(',', '.', regex=False),
+        errors='coerce'
+    )
+    
+    df_ranking = df_ranking.sort_values("Índice_num_temp", ascending=False).reset_index(drop=True)
+    df_ranking = df_ranking.drop(columns=['Índice_num_temp'])
+    
+    # Adicionar coluna de ranking
+    df_ranking.insert(0, "Rank", [f"{i+1}º" for i in df_ranking.index])
+    
+    # Formatar os números
+    df_ranking["Índice"] = df_ranking["Índice"].apply(formatar_numero_brasileiro)
+    
+    # Resto do código igual...
 else:
     st.warning("Não foi possível gerar o ranking - coluna 'Índice' não encontrada.")
 
@@ -358,7 +433,8 @@ else:
 with st.expander("ℹ️ Informações sobre os dados"):
     st.markdown("""
     ### Sobre os dados:
-    - **Índice**: Medida calculada pelo BACEN que considera o volume de reclamações em relação ao tamanho da instituição
+    - **Índice**: Medida calculada pelo BACEN que considera o volume de reclamações em relação ao tamanho da instituição. 
+      Formato brasileiro: **5.151,45** (ponto separador de milhar, vírgula separador decimal)
     - **Reguladas Procedentes**: Reclamações onde o cliente tinha razão
     - **Reguladas Outras**: Reclamações reguladas mas não procedentes
     - **Não Reguladas**: Reclamações fora do escopo de regulação do BACEN
